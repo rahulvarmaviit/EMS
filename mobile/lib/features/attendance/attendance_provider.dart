@@ -32,12 +32,10 @@ class AttendanceProvider extends ChangeNotifier {
             .map((json) => Attendance.fromJson(json))
             .toList();
         
-        // Find today's attendance
+        // Find today's attendance (safely check if exists)
         final today = DateTime.now().toIso8601String().split('T')[0];
-        _todayAttendance = _history.firstWhere(
-          (a) => a.date == today,
-          orElse: () => null as Attendance,
-        );
+        final todayRecords = _history.where((a) => a.date == today);
+        _todayAttendance = todayRecords.isNotEmpty ? todayRecords.first : null;
       }
     } on ApiException catch (e) {
       _error = e.message;

@@ -55,11 +55,12 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
       }
       
       if (_teamId != null) {
-        // Get team members
+        // Get team members (filter by team_id)
         final usersResponse = await _apiClient.get('/api/users');
         if (usersResponse['success'] == true) {
           _teamMembers = (usersResponse['data']['users'] as List)
               .map((json) => User.fromJson(json))
+              .where((user) => user.teamId == _teamId)
               .toList();
         }
         
@@ -216,10 +217,11 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
   }
 
   Widget _buildMemberCard(User member) {
-    final attendance = _teamAttendance.firstWhere(
+    // Safely find attendance record for this member
+    final attendanceRecords = _teamAttendance.where(
       (a) => a.userName == member.fullName,
-      orElse: () => null as Attendance,
     );
+    final attendance = attendanceRecords.isNotEmpty ? attendanceRecords.first : null;
     
     final isPresent = attendance != null;
     final status = attendance?.status ?? 'ABSENT';

@@ -84,7 +84,18 @@ class ApiClient {
   
   // Handle API response
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    // Guard against non-JSON responses
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw ApiException(
+        statusCode: response.statusCode,
+        message: response.statusCode >= 500 
+            ? 'Server error. Please try again later.'
+            : 'Unexpected response from server.',
+      );
+    }
     
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
