@@ -4,7 +4,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import config, { validateEnv } from './config/env';
-import { runMigrations, checkConnection } from './config/database';
+import { checkConnection } from './config/database';
 import { logger } from './utils/logger';
 import { requestLogger } from './middlewares/requestLogger';
 import routes from './routes';
@@ -43,14 +43,14 @@ app.use(requestLogger);
  */
 app.get('/health', async (req: Request, res: Response) => {
   const dbHealthy = await checkConnection();
-  
+
   const status = {
     status: dbHealthy ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     database: dbHealthy ? 'connected' : 'disconnected',
   };
-  
+
   res.status(dbHealthy ? 200 : 503).json(status);
 });
 
@@ -81,7 +81,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     path: req.path,
     method: req.method,
   });
-  
+
   res.status(500).json({
     success: false,
     error: 'Internal server error. Please try again later.',
@@ -94,18 +94,13 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 async function startServer(): Promise<void> {
   try {
-    // Run database migrations
-    logger.info('Running database migrations...');
-    await runMigrations();
-    logger.info('Migrations completed successfully');
-    
     // Verify database connection
     const dbConnected = await checkConnection();
     if (!dbConnected) {
       throw new Error('Failed to connect to database');
     }
     logger.info('Database connection verified');
-    
+
     // Start HTTP server
     app.listen(config.PORT, '0.0.0.0', () => {
       logger.info(`Server started`, {
@@ -113,7 +108,7 @@ async function startServer(): Promise<void> {
         environment: config.NODE_ENV,
         url: `http://0.0.0.0:${config.PORT}`,
       });
-      
+
       console.log(`
 ========================================
   EMS Backend Server Running

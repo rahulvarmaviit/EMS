@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
   // TODO: Update this to your production backend URL
-  static const String baseUrl = 'https://8a2b2b5f-4fb5-44fa-9ace-8a6ef6976126-00-2bdrsmi06gwud.pike.replit.dev';
+  // Use 10.0.2.2 for Android Emulator, localhost for iOS Simulator
+  static const String baseUrl = 'http://10.0.2.2:5000';
   
   String? _token;
   
