@@ -5,16 +5,18 @@ A mobile-first attendance system for small startups (~50 users) that verifies em
 
 ## Current State
 - **Phase 1: Backend Foundation** - Complete
+- **Phase 2: Flutter Mobile App** - Complete
 - Backend API server running on port 5000
 - PostgreSQL database with migrations
 - JWT authentication implemented
 - All REST APIs implemented
+- Flutter mobile app ready for build
 
 ## Tech Stack
 - **Backend**: Node.js + Express + TypeScript
 - **Database**: PostgreSQL (Replit built-in)
 - **Auth**: Custom JWT (7-day expiration)
-- **Frontend**: Flutter (pending)
+- **Frontend**: Flutter (Dart)
 
 ## Project Structure
 ```
@@ -77,5 +79,18 @@ See `API_SPEC.md` for full documentation.
 - Add logging
 - Step-by-step approval process
 
+## Building the Mobile App
+
+The Flutter mobile app is in the `/mobile` directory. To build:
+
+1. Install Flutter on your computer: https://flutter.dev
+2. Navigate to the mobile folder
+3. Run `flutter pub get` to install dependencies
+4. Update API URL in `lib/core/api/api_client.dart`
+5. Run `flutter build apk --release` for Android APK
+
+See `mobile/README.md` for detailed instructions.
+
 ## Recent Changes
+- 2026-01-25: Phase 2 Flutter mobile app complete
 - 2026-01-25: Phase 1 backend complete - all APIs implemented
