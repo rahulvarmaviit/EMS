@@ -4,6 +4,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../models/team.dart';
 import '../../models/user.dart';
+import '../admin/location_management_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -63,6 +64,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.location_on),
+            tooltip: 'Manage Locations',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LocationManagementScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => authProvider.logout(),

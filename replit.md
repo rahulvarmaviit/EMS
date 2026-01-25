@@ -92,5 +92,8 @@ The Flutter mobile app is in the `/mobile` directory. To build:
 See `mobile/README.md` for detailed instructions.
 
 ## Recent Changes
+- 2026-01-25: Added Profile screen with Team Lead info
+- 2026-01-25: Added Location management for Admin
+- 2026-01-25: Configured deployment settings
 - 2026-01-25: Phase 2 Flutter mobile app complete
 - 2026-01-25: Phase 1 backend complete - all APIs implemented

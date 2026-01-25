@@ -6,8 +6,9 @@ channel="stable-24_05"
 packages = ["zip"]
 
 [deployment]
-run = ["dart", "main.dart"]
-deploymentTarget = "cloudrun"
+run = ["node", "backend/dist/index.js"]
+deploymentTarget = "autoscale"
+build = ["cd", "backend", "&&", "npm", "run", "build"]
 
 [agent]
 expertMode = true
