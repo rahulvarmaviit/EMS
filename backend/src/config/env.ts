@@ -15,8 +15,8 @@ export const config = {
   // Database (required - will fail if not set)
   DATABASE_URL: process.env.DATABASE_URL || '',
   
-  // JWT settings
-  JWT_SECRET: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+  // JWT settings (required - must be set via environment variable)
+  JWT_SECRET: process.env.JWT_SECRET || '',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d', // 7 days for mobile-friendly sessions
   
   // Business rules
@@ -33,16 +33,16 @@ export const config = {
  * Call this at startup to fail fast if config is missing
  */
 export function validateEnv(): void {
-  const required = ['DATABASE_URL'];
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}. Please set them before starting the server.`);
   }
   
-  // Warn if using default JWT secret in production
-  if (config.NODE_ENV === 'production' && config.JWT_SECRET === 'your-super-secret-jwt-key-change-in-production') {
-    console.warn('WARNING: Using default JWT secret in production! Set JWT_SECRET environment variable.');
+  // Validate JWT_SECRET strength
+  if (config.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters for security');
   }
 }
 

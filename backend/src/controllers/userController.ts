@@ -67,20 +67,43 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
       paramIndex++;
     }
     
-    // Count query (same conditions)
-    const countQuery = queryText.replace(
-      /SELECT .* FROM/,
-      'SELECT COUNT(*) FROM'
-    ).split('ORDER BY')[0];
+    // Build separate count query with proper parameters
+    let countQueryText = `
+      SELECT COUNT(*) 
+      FROM users u
+      LEFT JOIN teams t ON u.team_id = t.id
+      WHERE u.is_active = true
+    `;
+    const countParams: any[] = [];
+    let countParamIndex = 1;
     
-    // Add ordering and pagination
+    // Apply same filters for count
+    if (userRole === 'LEAD') {
+      const teamResult = await query('SELECT id FROM teams WHERE lead_id = $1', [userId]);
+      if (teamResult.rows.length > 0) {
+        countQueryText += ` AND u.team_id = $${countParamIndex}`;
+        countParams.push(teamResult.rows[0].id);
+        countParamIndex++;
+      }
+    } else if (team_id) {
+      countQueryText += ` AND u.team_id = $${countParamIndex}`;
+      countParams.push(team_id);
+      countParamIndex++;
+    }
+    
+    if (role) {
+      countQueryText += ` AND u.role = $${countParamIndex}`;
+      countParams.push(role);
+    }
+    
+    // Add ordering and pagination to main query
     queryText += ` ORDER BY u.full_name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limitNum, offset);
     
     const result = await query(queryText, queryParams);
     
-    // Get count with same filters (without LIMIT/OFFSET params)
-    const countResult = await query(countQuery, queryParams.slice(0, -2));
+    // Get count with proper separate query
+    const countResult = await query(countQueryText, countParams);
     const total = parseInt(countResult.rows[0].count, 10);
     
     res.json({

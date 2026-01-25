@@ -58,10 +58,18 @@ COMMENT ON COLUMN users.is_active IS 'Soft delete: false means user is deactivat
 -- ============================================
 -- Add FK from teams.lead_id to users.id
 -- Done after users table exists to avoid circular dependency
+-- Using DO block to make it idempotent
 -- ============================================
-ALTER TABLE teams 
-ADD CONSTRAINT fk_teams_lead_id 
-FOREIGN KEY (lead_id) REFERENCES users(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_teams_lead_id'
+    ) THEN
+        ALTER TABLE teams 
+        ADD CONSTRAINT fk_teams_lead_id 
+        FOREIGN KEY (lead_id) REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- ============================================
 -- TABLE 3: locations
@@ -130,17 +138,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply trigger to tables with updated_at column
+-- Apply trigger to tables with updated_at column (using DROP IF EXISTS for idempotency)
+DROP TRIGGER IF EXISTS trigger_users_updated_at ON users;
 CREATE TRIGGER trigger_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trigger_teams_updated_at ON teams;
 CREATE TRIGGER trigger_teams_updated_at
     BEFORE UPDATE ON teams
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS trigger_locations_updated_at ON locations;
 CREATE TRIGGER trigger_locations_updated_at
     BEFORE UPDATE ON locations
     FOR EACH ROW
