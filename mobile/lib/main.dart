@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/auth_provider.dart';
 import 'features/attendance/attendance_provider.dart';
-import 'features/login/login_screen.dart';
+import 'features/login/auth_screen.dart';
 import 'features/attendance/employee_home_screen.dart';
 import 'features/dashboard/admin_dashboard.dart';
 import 'features/lead/lead_dashboard.dart';
@@ -78,9 +78,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        // Show login screen if not authenticated
+        // Show auth screen (login/signup) if not authenticated
         if (!auth.isAuthenticated) {
-          return const LoginScreen();
+          return const AuthScreen();
         }
 
         // Route based on user role

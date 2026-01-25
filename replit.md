@@ -92,8 +92,29 @@ The Flutter mobile app is in the `/mobile` directory. To build:
 See `mobile/README.md` for detailed instructions.
 
 ## Recent Changes
+- 2026-01-25: Added login history tracking (device name, IP, user agent)
+- 2026-01-25: Added self-registration (signup) for employees
+- 2026-01-25: Built unified auth screen with login/signup tabs
+- 2026-01-25: Added team/lead assignment dialog in Admin dashboard
 - 2026-01-25: Added Profile screen with Team Lead info
 - 2026-01-25: Added Location management for Admin
 - 2026-01-25: Configured deployment settings
 - 2026-01-25: Phase 2 Flutter mobile app complete
 - 2026-01-25: Phase 1 backend complete - all APIs implemented
+
+## New Features
+
+### Login History Tracking
+- Table: `login_history` captures device_name, ip_address, user_agent per login
+- IP captured from x-forwarded-for header or socket.remoteAddress
+- Device name sent from mobile app (Android/iOS)
+
+### Employee Self-Registration
+- Endpoint: `POST /api/auth/signup` - public registration
+- Defaults to EMPLOYEE role, no team assigned
+- Admin can later assign team and promote to LEAD
+
+### Admin User Management
+- Click any user card in Admin dashboard to manage
+- Assign users to teams via dropdown
+- Checkbox to promote user to Team Lead

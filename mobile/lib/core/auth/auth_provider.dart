@@ -50,7 +50,7 @@ class AuthProvider extends ChangeNotifier {
   }
   
   // Login with mobile number and password
-  Future<bool> login(String mobileNumber, String password) async {
+  Future<bool> login(String mobileNumber, String password, {String? deviceName}) async {
     _status = AuthStatus.loading;
     _error = null;
     notifyListeners();
@@ -59,6 +59,7 @@ class AuthProvider extends ChangeNotifier {
       final response = await _apiClient.post('/api/auth/login', {
         'mobile_number': mobileNumber,
         'password': password,
+        'device_name': deviceName ?? 'Unknown Device',
       });
       
       if (response['success'] == true) {
@@ -108,6 +109,46 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       _status = AuthStatus.unauthenticated;
       await _apiClient.clearToken();
+    }
+  }
+  
+  // Signup for new employees
+  Future<bool> signup({
+    required String fullName,
+    required String mobileNumber,
+    required String password,
+    String? deviceName,
+  }) async {
+    _status = AuthStatus.loading;
+    _error = null;
+    notifyListeners();
+    
+    try {
+      final response = await _apiClient.post('/api/auth/signup', {
+        'full_name': fullName,
+        'mobile_number': mobileNumber,
+        'password': password,
+      });
+      
+      if (response['success'] == true) {
+        // Auto-login after signup
+        return await login(mobileNumber, password, deviceName: deviceName);
+      }
+      
+      _error = response['error'] ?? 'Signup failed';
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _error = 'Connection failed. Please check your internet.';
+      _status = AuthStatus.unauthenticated;
+      notifyListeners();
+      return false;
     }
   }
   

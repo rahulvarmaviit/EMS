@@ -204,6 +204,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
+        onTap: () => _showAssignTeamDialog(user),
         leading: CircleAvatar(
           backgroundColor: user.isAdmin
               ? Colors.purple
@@ -211,13 +212,112 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? Colors.orange
                   : Colors.green,
           child: Text(
-            user.fullName.substring(0, 1).toUpperCase(),
+            user.fullName.isNotEmpty 
+                ? user.fullName.substring(0, 1).toUpperCase() 
+                : 'U',
             style: const TextStyle(color: Colors.white),
           ),
         ),
         title: Text(user.fullName),
         subtitle: Text('${user.role} | ${user.teamName ?? "No team"}'),
-        trailing: Text(user.mobileNumber),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+
+  void _showAssignTeamDialog(User user) {
+    String? selectedTeamId = user.teamId;
+    bool makeLead = user.isLead;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Manage ${user.fullName}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Phone: ${user.mobileNumber}',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                Text(
+                  'Current Role: ${user.role}',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                
+                // Team Assignment
+                DropdownButtonFormField<String?>(
+                  value: selectedTeamId,
+                  decoration: const InputDecoration(
+                    labelText: 'Assign to Team',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('No Team'),
+                    ),
+                    ..._teams.map((team) => DropdownMenuItem(
+                      value: team.id,
+                      child: Text(team.name),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedTeamId = value;
+                      if (value == null) makeLead = false;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                
+                // Make Team Lead checkbox (only show if team is selected and not admin)
+                if (selectedTeamId != null && !user.isAdmin)
+                  CheckboxListTile(
+                    title: const Text('Make Team Lead'),
+                    subtitle: const Text('Promotes user to LEAD role'),
+                    value: makeLead,
+                    onChanged: (value) {
+                      setState(() => makeLead = value ?? false);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _apiClient.patch('/api/users/${user.id}/assign-team', {
+                    'team_id': selectedTeamId,
+                    'is_lead': makeLead,
+                  });
+                  Navigator.pop(context);
+                  _loadData();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Team assignment updated'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

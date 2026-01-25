@@ -30,7 +30,8 @@ Login with mobile number and password.
 ```json
 {
   "mobile_number": "+1234567890",
-  "password": "string (min 6 chars)"
+  "password": "string (min 6 chars)",
+  "device_name": "Android Device (optional - for login history)"
 }
 ```
 
@@ -51,9 +52,51 @@ Login with mobile number and password.
 }
 ```
 
+**Note:** Login history (device_name, IP address, user_agent) is captured for security auditing.
+
 **Error Cases:**
 - 400: Missing mobile_number or password
 - 401: Invalid credentials or account deactivated
+
+---
+
+#### POST /api/auth/signup
+Employee self-registration. Creates user with EMPLOYEE role, no team assigned.
+
+| Field | Value |
+|-------|-------|
+| **Auth Required** | No |
+| **Rate Limit** | 5 requests/minute |
+
+**Request Body:**
+```json
+{
+  "full_name": "John Doe",
+  "mobile_number": "+1234567890",
+  "password": "string (min 6 chars)"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "uuid",
+      "mobile_number": "+1234567890",
+      "full_name": "John Doe",
+      "role": "EMPLOYEE",
+      "team_id": null,
+      "created_at": "timestamp"
+    }
+  }
+}
+```
+
+**Error Cases:**
+- 400: Missing required fields, password too short
+- 409: Mobile number already registered
 
 ---
 

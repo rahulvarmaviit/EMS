@@ -1,5 +1,5 @@
 entrypoint = "main.dart"
-modules = ["dart-3.3", "nodejs-20", "python-3.11"]
+modules = ["dart-3.3", "nodejs-20", "python-3.11", "postgresql-16"]
 
 [nix]
 channel="stable-24_05"

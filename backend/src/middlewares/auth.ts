@@ -78,6 +78,27 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 }
 
 /**
+ * Optional authentication - attaches user if token exists, but doesn't require it
+ * Useful for routes that behave differently for authenticated vs anonymous users
+ */
+export function optionalAuthenticate(req: Request, res: Response, next: NextFunction): void {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
+      req.user = decoded;
+    }
+    
+    next();
+  } catch (error) {
+    // Token invalid or expired, continue without user
+    next();
+  }
+}
+
+/**
  * Role-based access control middleware factory
  * Use: authorize('ADMIN') or authorize('ADMIN', 'LEAD')
  * @param allowedRoles - Roles that can access this route
@@ -124,4 +145,4 @@ export function generateToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string 
   } as jwt.SignOptions);
 }
 
-export default { authenticate, authorize, generateToken };
+export default { authenticate, optionalAuthenticate, authorize, generateToken };

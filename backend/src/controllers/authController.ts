@@ -71,7 +71,21 @@ export async function login(req: Request, res: Response): Promise<void> {
       role: user.role,
     });
     
-    logger.auth('login', user.id, { role: user.role });
+    // Get device info from request
+    const deviceName = req.body.device_name || req.headers['x-device-name'] || 'Unknown Device';
+    const ipAddress = req.headers['x-forwarded-for']?.toString().split(',')[0] || 
+                      req.socket.remoteAddress || 
+                      'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+    
+    // Log login to history
+    await query(
+      `INSERT INTO login_history (user_id, device_name, ip_address, user_agent) 
+       VALUES ($1, $2, $3, $4)`,
+      [user.id, deviceName, ipAddress, userAgent]
+    );
+    
+    logger.auth('login', user.id, { role: user.role, device: deviceName, ip: ipAddress });
     
     // Return token and user info (exclude password_hash)
     res.json({
@@ -104,19 +118,24 @@ export async function login(req: Request, res: Response): Promise<void> {
 export async function register(req: Request, res: Response): Promise<void> {
   try {
     const { mobile_number, password, full_name, role, team_id } = req.body;
+    const isAdminCreating = req.user?.role === 'ADMIN';
     
     // Validate required fields
-    if (!mobile_number || !password || !full_name || !role) {
+    if (!mobile_number || !password || !full_name) {
       res.status(400).json({
         success: false,
-        error: 'Mobile number, password, full name, and role are required',
+        error: 'Mobile number, password, and full name are required',
       });
       return;
     }
     
-    // Validate role
+    // For admin creating users, role can be specified
+    // For self-registration, default to EMPLOYEE
+    const userRole = isAdminCreating && role ? role : 'EMPLOYEE';
+    
+    // Validate role if admin is creating
     const validRoles = ['ADMIN', 'LEAD', 'EMPLOYEE'];
-    if (!validRoles.includes(role)) {
+    if (!validRoles.includes(userRole)) {
       res.status(400).json({
         success: false,
         error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
@@ -151,19 +170,21 @@ export async function register(req: Request, res: Response): Promise<void> {
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
     
-    // Insert new user
+    // Insert new user (only admin can assign team_id)
+    const assignTeamId = isAdminCreating ? (team_id || null) : null;
+    
     const result = await query(
       `INSERT INTO users (mobile_number, password_hash, full_name, role, team_id) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING id, mobile_number, full_name, role, team_id, created_at`,
-      [mobile_number, password_hash, full_name, role, team_id || null]
+      [mobile_number, password_hash, full_name, userRole, assignTeamId]
     );
     
     const newUser = result.rows[0];
     
     logger.auth('register', newUser.id, { 
       role: newUser.role, 
-      createdBy: req.user?.userId 
+      createdBy: req.user?.userId || 'self-registration'
     });
     
     res.status(201).json({
