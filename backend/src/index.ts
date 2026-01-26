@@ -8,6 +8,7 @@ import { checkConnection } from './config/database';
 import { logger } from './utils/logger';
 import { requestLogger } from './middlewares/requestLogger';
 import routes from './routes';
+import documentRoutes from './routes/documentRoutes';
 
 // Validate environment variables early
 validateEnv();
@@ -60,6 +61,7 @@ app.get('/health', async (req: Request, res: Response) => {
 
 // Mount all API routes under /api prefix
 app.use('/api', routes);
+app.use('/api/documents', documentRoutes);
 
 // ============================================
 // ERROR HANDLING

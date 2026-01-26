@@ -7,6 +7,7 @@ import userRoutes from './userRoutes';
 import teamRoutes from './teamRoutes';
 import locationRoutes from './locationRoutes';
 import attendanceRoutes from './attendanceRoutes';
+import leaveRoutes from './leaveRoutes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/users', userRoutes);
 router.use('/teams', teamRoutes);
 router.use('/locations', locationRoutes);
 router.use('/attendance', attendanceRoutes);
+router.use('/leaves', leaveRoutes);
 
 export default router;

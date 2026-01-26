@@ -18,26 +18,22 @@ class ApiClient {
     return 'http://192.168.1.5:5000';
   }
 
-  String? _token;
-
   // Get stored token
   Future<String?> getToken() async {
-    if (_token != null) return _token;
+    // Always read from SharedPreferences to ensure we have the latest token
+    // across different ApiClient instances (e.g., AuthProvider vs AttendanceProvider)
     final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('auth_token');
-    return _token;
+    return prefs.getString('auth_token');
   }
 
   // Set token after login
   Future<void> setToken(String token) async {
-    _token = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
   }
 
   // Clear token on logout
   Future<void> clearToken() async {
-    _token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_data');
@@ -79,6 +75,18 @@ class ApiClient {
       String endpoint, Map<String, dynamic> body) async {
     final headers = await _getHeaders();
     final response = await http.patch(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    return _handleResponse(response);
+  }
+
+  // Generic PUT request
+  Future<Map<String, dynamic>> put(
+      String endpoint, Map<String, dynamic> body) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
       Uri.parse('$baseUrl$endpoint'),
       headers: headers,
       body: jsonEncode(body),

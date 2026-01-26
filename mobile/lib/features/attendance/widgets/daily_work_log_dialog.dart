@@ -19,10 +19,11 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
 
   // Mock projects for now
   final List<String> _projects = [
-    'EMS Mobile App',
-    'EMS Backend',
+    'Connected Living ',
+    'Wolfronix',
     'Website Redesign',
-    'AI Model Deployment',
+    'AI Model Development',
+    'TMS',
     'Internal Tools',
     'Other',
   ];
@@ -38,13 +39,6 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      if (_selectedProject == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a project')),
-        );
-        return;
-      }
-
       final data = {
         'work_done': _workDoneController.text,
         'project_name': _selectedProject,
@@ -143,6 +137,12 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                         }).toList(),
                         onChanged: (value) =>
                             setState(() => _selectedProject = value),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a project';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: AppSpacing.md),
                       _buildLabel('Meetings Attended'),

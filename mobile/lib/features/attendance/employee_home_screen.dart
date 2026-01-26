@@ -7,7 +7,11 @@ import '../../core/theme/app_theme.dart';
 import '../../core/components/glass_components.dart';
 import '../profile/profile_screen.dart';
 import 'attendance_provider.dart';
+import 'attendance_screen.dart';
+import '../leave/leave_screen.dart';
 import 'widgets/daily_work_log_dialog.dart';
+import '../todo/todo_screen.dart';
+import '../documents/documents_screen.dart';
 
 class EmployeeHomeScreen extends StatefulWidget {
   const EmployeeHomeScreen({super.key});
@@ -310,7 +314,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     final user = authProvider.user;
 
     return Scaffold(
-      drawer: Drawer(
+      endDrawer: Drawer(
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -371,7 +375,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 title: 'Attendance',
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to Attendance
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+                  );
                 },
               ),
               _buildDrawerItem(
@@ -379,7 +386,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 title: 'Leave',
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to Leave
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LeaveScreen()),
+                  );
                 },
               ),
               _buildDrawerItem(
@@ -387,7 +397,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 title: "To Do's",
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to To Do's
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TodoScreen()),
+                  );
                 },
               ),
               _buildDrawerItem(
@@ -395,7 +408,10 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
                 title: 'Documents',
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to Documents
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DocumentsScreen()),
+                  );
                 },
               ),
             ],
@@ -404,14 +420,16 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
       ),
       appBar: AppBar(
         title: const Text('AKH Dashboard'),
+        centerTitle: true,
         backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: 'Profile',
-            onPressed: _navigateToProfile,
-          ),
-        ],
+        automaticallyImplyLeading: false, // Don't show default drawer icon
+        leading: IconButton(
+          icon: const Icon(Icons.person),
+          tooltip: 'Profile',
+          onPressed: _navigateToProfile,
+        ),
+        // Ensure endDrawer icon is shown (AppBar handles this automatically if actions are not empty or if we don't suppress it)
+        // But we want ONLY the endDrawer icon in actions.
       ),
       body: Stack(
         children: [

@@ -12,12 +12,15 @@ model User {
   mobile_number String         @unique
   password_hash String
   full_name     String
+  email         String?        @unique
   role          Role           @default(EMPLOYEE)
   is_active     Boolean        @default(true)
   created_at    DateTime       @default(now())
   team_id       String?
   attendance    Attendance[]
+  leaves        LeaveRequest[]
   login_history LoginHistory[]
+  documents     Document[]
   managed_team  Team?          @relation("TeamLead")
   team          Team?          @relation("TeamMembers", fields: [team_id], references: [id])
 
@@ -31,7 +34,7 @@ model LoginHistory {
   user_agent   String?
   logged_in_at DateTime @default(now())
   user_id      String
-  user         User     @relation(fields: [user_id], references: [id])
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@map("login_history")
@@ -76,10 +79,25 @@ model Attendance {
   notes          String?
   status         AttendanceStatus
   user_id        String
-  user           User             @relation(fields: [user_id], references: [id])
+  user           User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id, date])
   @@map("attendance")
+}
+
+model LeaveRequest {
+  id          String      @id @default(uuid())
+  start_date  DateTime    @db.Date
+  end_date    DateTime    @db.Date
+  reason      String
+  status      LeaveStatus @default(PENDING)
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  user_id     String
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("leave_requests")
 }
 
 enum Role {
@@ -93,4 +111,22 @@ enum AttendanceStatus {
   LATE
   HALF_DAY
   ABSENT
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  title       String
+  file_path   String
+  uploaded_at DateTime @default(now())
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("documents")
 }

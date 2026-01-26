@@ -172,7 +172,7 @@ class AuthProvider extends ChangeNotifier {
       _error = 'Failed to send OTP';
       _status = AuthStatus.unauthenticated;
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 
@@ -199,6 +199,40 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       rethrow;
     }
+  }
+
+  // Update profile
+  Future<bool> updateProfile({String? email}) async {
+    _status = AuthStatus.loading;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiClient.put('/api/auth/profile', {
+        'email': email,
+      });
+
+      if (response['success'] == true) {
+        _user = User.fromJson(response['data']['user']);
+
+        // Update cache
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            'user_data', jsonEncode(response['data']['user']));
+
+        _status = AuthStatus.authenticated;
+        notifyListeners();
+        return true;
+      }
+
+      _error = response['error'] ?? 'Failed to update profile';
+    } catch (e) {
+      _error = 'Failed to update profile';
+    }
+
+    _status = AuthStatus.authenticated;
+    notifyListeners();
+    return false;
   }
 
   // Logout

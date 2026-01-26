@@ -2,7 +2,7 @@
 // Purpose: Login, registration, and profile endpoints
 
 import { Router } from 'express';
-import { login, signup, register, getProfile, getLoginHistory } from '../controllers/authController';
+import { login, signup, register, getProfile, getLoginHistory, updateProfile } from '../controllers/authController';
 import { authenticate, optionalAuthenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -15,6 +15,7 @@ router.post('/signup', signup);
 
 // Protected routes
 router.get('/me', authenticate, getProfile);
+router.put('/profile', authenticate, updateProfile);
 
 // Admin only - register new users with role assignment
 router.post('/register', authenticate, authorize('ADMIN'), register);

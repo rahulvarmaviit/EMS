@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import 'core/auth/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/attendance/attendance_provider.dart';
+import 'features/leave/leave_provider.dart';
 import 'features/login/auth_screen.dart';
 import 'features/attendance/employee_home_screen.dart';
 import 'features/dashboard/admin_dashboard.dart';
 import 'features/lead/lead_dashboard.dart';
+import 'features/todo/todo_provider.dart';
 
 void main() {
   runApp(const EmsApp());
@@ -21,6 +23,8 @@ class EmsApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
+        ChangeNotifierProvider(create: (_) => LeaveProvider()),
+        ChangeNotifierProvider(create: (_) => TodoProvider()),
       ],
       child: MaterialApp(
         title: 'EMS - Geo Attendance',

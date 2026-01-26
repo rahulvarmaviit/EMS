@@ -95,9 +95,11 @@ export async function login(req: Request, res: Response): Promise<void> {
           id: user.id,
           mobile_number: user.mobile_number,
           full_name: user.full_name,
+          email: user.email,
           role: user.role,
           team_id: user.team_id,
           team_name: user.team?.name || null,
+          created_at: user.created_at,
         },
       },
     });
@@ -180,6 +182,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
           id: newUser.id,
           mobile_number: newUser.mobile_number,
           full_name: newUser.full_name,
+          email: newUser.email,
           role: newUser.role,
           team_id: newUser.team_id,
         },
@@ -265,6 +268,7 @@ export async function register(req: Request, res: Response): Promise<void> {
           id: newUser.id,
           mobile_number: newUser.mobile_number,
           full_name: newUser.full_name,
+          email: newUser.email,
           role: newUser.role,
           team_id: newUser.team_id,
           created_at: newUser.created_at,
@@ -308,6 +312,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
           id: user.id,
           mobile_number: user.mobile_number,
           full_name: user.full_name,
+          email: user.email,
           role: user.role,
           team_id: user.team_id,
           team_name: user.team?.name || null,
@@ -375,4 +380,52 @@ export async function getLoginHistory(req: Request, res: Response): Promise<void
   }
 }
 
-export default { login, signup, register, getProfile, getLoginHistory };
+export async function updateProfile(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    const { email } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid email format',
+      });
+      return;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { email: email },
+      include: { team: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: updatedUser.id,
+          mobile_number: updatedUser.mobile_number,
+          full_name: updatedUser.full_name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          team_id: updatedUser.team_id,
+          team_name: updatedUser.team?.name || null,
+          created_at: updatedUser.created_at,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Update profile error', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update profile',
+    });
+  }
+}
+
+export default { login, signup, register, getProfile, getLoginHistory, updateProfile };

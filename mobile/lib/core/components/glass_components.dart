@@ -135,6 +135,7 @@ class GlassTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool obscureText;
   final TextInputType keyboardType;
+  final int maxLines;
   final String? Function(String?)? validator;
 
   const GlassTextField({
@@ -147,6 +148,7 @@ class GlassTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.validator,
+    this.maxLines = 1,
   });
 
   @override
@@ -155,6 +157,7 @@ class GlassTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      maxLines: maxLines,
       validator: validator,
       style: AppTextStyles.bodyLarge,
       decoration: InputDecoration(

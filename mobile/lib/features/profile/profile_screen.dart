@@ -4,6 +4,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../models/user.dart';
 import '../../models/team.dart';
+import '../../core/components/glass_components.dart'; // Assuming we want consistent UI
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,10 +27,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfileData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final user = context.read<AuthProvider>().user;
-      
+
       if (user?.teamId != null) {
         // Get team info from teams API (accessible to all users)
         final teamsResponse = await _apiClient.get('/api/teams');
@@ -37,11 +38,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final teams = (teamsResponse['data']['teams'] as List)
               .map((json) => Team.fromJson(json))
               .toList();
-          
+
           // Safely find team
           final teamRecords = teams.where((t) => t.id == user!.teamId);
           _team = teamRecords.isNotEmpty ? teamRecords.first : null;
-          
+
           // Team lead name is included in team data (lead_name field)
           if (_team?.leadName != null) {
             _teamLead = User(
@@ -56,10 +57,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       debugPrint('Error loading profile: $e');
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showEditEmailDialog(String? currentEmail) {
+    final emailController = TextEditingController(text: currentEmail);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Update Email'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email Address',
+              hintText: 'Enter your email',
+              prefixIcon: Icon(Icons.email),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter an email';
+              }
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final success = await context
+                    .read<AuthProvider>()
+                    .updateProfile(email: emailController.text);
+
+                if (mounted) {
+                  Navigator.pop(context);
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Email updated successfully')),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to update email')),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -85,8 +150,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 50,
                       backgroundColor: Colors.blue,
                       child: Text(
-                        (user?.fullName.isNotEmpty == true) 
-                            ? user!.fullName.substring(0, 1).toUpperCase() 
+                        (user?.fullName.isNotEmpty == true)
+                            ? user!.fullName.substring(0, 1).toUpperCase()
                             : 'U',
                         style: const TextStyle(
                           fontSize: 40,
@@ -96,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Name
                     Text(
                       user?.fullName ?? 'User',
@@ -106,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    
+
                     // Role Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -126,35 +191,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Info Cards
                     _buildInfoCard(
                       icon: Icons.phone,
                       title: 'Mobile Number',
                       value: user?.mobileNumber ?? 'N/A',
                     ),
-                    
+
+                    _buildInfoCard(
+                      icon: Icons.email,
+                      title: 'Email',
+                      value: user?.email ?? 'Add Email',
+                      onTap: () => _showEditEmailDialog(user?.email),
+                      showEditIcon: true,
+                    ),
+
                     if (_team != null)
                       _buildInfoCard(
                         icon: Icons.groups,
                         title: 'Team',
                         value: _team!.name,
                       ),
-                    
+
                     if (_teamLead != null && user?.role == 'EMPLOYEE')
                       _buildInfoCard(
                         icon: Icons.person,
                         title: 'My Team Lead',
                         value: _teamLead!.fullName,
                       ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Logout Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => authProvider.logout(),
+                        onPressed: () async {
+                          await authProvider.logout();
+                          if (context.mounted) {
+                            Navigator.of(context)
+                                .popUntil((route) => route.isFirst);
+                          }
+                        },
                         icon: const Icon(Icons.logout),
                         label: const Text('Logout'),
                         style: ElevatedButton.styleFrom(
@@ -187,10 +266,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required String value,
     String? subtitle,
+    VoidCallback? onTap,
+    bool showEditIcon = false,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
+        onTap: onTap,
         leading: CircleAvatar(
           backgroundColor: Colors.blue.shade50,
           child: Icon(icon, color: Colors.blue),
@@ -210,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Colors.white,
               ),
             ),
             if (subtitle != null)
@@ -220,6 +302,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
           ],
         ),
+        trailing:
+            showEditIcon ? const Icon(Icons.edit, color: Colors.blue) : null,
       ),
     );
   }
