@@ -7,6 +7,12 @@ import { isWithinGeofence, validateCoordinates, GeoLocation } from '../services/
 import { logger } from '../utils/logger';
 import config from '../config/env';
 
+// Helper to get today's date at UTC midnight (for DATE column compatibility)
+function getUtcMidnight(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+}
+
 /**
  * POST /api/attendance/check-in
  * Record user check-in with GPS validation
@@ -25,9 +31,9 @@ export async function checkIn(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Check if already checked in today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check if already checked in today (use UTC midnight for DATE column)
+    const today = getUtcMidnight();
+    console.log('Check-in: Today UTC midnight =', today.toISOString());
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
@@ -69,7 +75,19 @@ export async function checkIn(req: Request, res: Response): Promise<void> {
       radius_meters: loc.radius_meters,
     }));
 
-    const matchingLocation = isWithinGeofence(latitude, longitude, geoLocations);
+    let matchingLocation = isWithinGeofence(latitude, longitude, geoLocations);
+
+    // DEBUG: Skip geofence check if enabled in config
+    if (config.SKIP_GEOFENCE && !matchingLocation) {
+      logger.info('Skipping geofence check (dev mode)', { userId });
+      matchingLocation = geoLocations[0] || {
+        id: 'debug-loc',
+        name: 'Debug Location (Geofence Disabled)',
+        latitude: 0,
+        longitude: 0,
+        radius_meters: 1000,
+      };
+    }
 
     if (!matchingLocation) {
       logger.attendance('geo_rejected', userId!, {
@@ -143,7 +161,7 @@ export async function checkIn(req: Request, res: Response): Promise<void> {
 export async function checkOut(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.userId;
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, work_done, project_name, meetings, todo_updates, notes } = req.body;
 
     // Validate coordinates
     if (!validateCoordinates(latitude, longitude)) {
@@ -154,9 +172,9 @@ export async function checkOut(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Find today's check-in record
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Find today's check-in record (use UTC midnight for DATE column)
+    const today = getUtcMidnight();
+    console.log('Check-out: Today UTC midnight =', today.toISOString());
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
@@ -199,6 +217,13 @@ export async function checkOut(req: Request, res: Response): Promise<void> {
       where: { id: existingAttendance.id },
       data: {
         check_out_time: checkOutTime,
+        check_out_lat: latitude,
+        check_out_long: longitude,
+        work_done,
+        project_name,
+        meetings,
+        todo_updates,
+        notes,
         status,
       },
     });

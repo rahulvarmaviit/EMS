@@ -13,8 +13,9 @@ class ApiClient {
       return 'http://localhost:5000';
     }
     // For Android emulator, 10.0.2.2 maps to host's localhost
-    // For physical device, replace with your IP address
-    return 'http://10.0.2.2:5000';
+    // For physical device, use your computer's local IP
+    // Currently detected as: 192.168.1.5
+    return 'http://192.168.1.5:5000';
   }
 
   String? _token;

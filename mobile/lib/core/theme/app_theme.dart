@@ -55,8 +55,20 @@ class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  static const TextStyle displaySmall = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textPrimary,
+  );
+
   static const TextStyle titleLarge = TextStyle(
     fontSize: 20,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle titleMedium = TextStyle(
+    fontSize: 18,
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
@@ -69,6 +81,12 @@ class AppTextStyles {
 
   static const TextStyle bodyMedium = TextStyle(
     fontSize: 14,
+    fontWeight: FontWeight.normal,
+    color: AppColors.textSecondary,
+  );
+
+  static const TextStyle bodySmall = TextStyle(
+    fontSize: 12,
     fontWeight: FontWeight.normal,
     color: AppColors.textSecondary,
   );

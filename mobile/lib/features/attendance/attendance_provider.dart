@@ -20,6 +20,10 @@ class AttendanceProvider extends ChangeNotifier {
 
   // Fetch attendance history
   Future<void> fetchHistory() async {
+    // Clear previous state immediately to avoid showing old user's data
+    _history = [];
+    _todayAttendance = null;
+
     _isLoading = true;
     _error = null;
     notifyListeners();
@@ -33,15 +37,24 @@ class AttendanceProvider extends ChangeNotifier {
             .toList();
 
         // Helper to check if two dates are the same day (ignoring time)
+        // IMPORTANT: Convert dates to local before comparing to handle UTC/local mismatch
         bool isSameDay(DateTime date1, DateTime date2) {
-          return date1.year == date2.year &&
-              date1.month == date2.month &&
-              date1.day == date2.day;
+          final local1 = date1.toLocal();
+          final local2 = date2.toLocal();
+          return local1.year == local2.year &&
+              local1.month == local2.month &&
+              local1.day == local2.day;
         }
 
         // Find today's attendance
         final now = DateTime.now();
-        debugPrint('AttendanceProvider: Today is ${now.toString()}');
+        debugPrint('AttendanceProvider: Today (local) is ${now.toString()}');
+        debugPrint('AttendanceProvider: Total records: ${_history.length}');
+
+        // Debug: print all records for diagnosis
+        for (var a in _history) {
+          debugPrint('  Record date: ${a.date} (local: ${a.date.toLocal()})');
+        }
 
         final todayRecords = _history.where((a) => isSameDay(a.date, now));
 
@@ -93,17 +106,21 @@ class AttendanceProvider extends ChangeNotifier {
     }
   }
 
-  // Check out with GPS coordinates
-  Future<bool> checkOut(double latitude, double longitude) async {
+  // Check out with GPS coordinates and work log
+  Future<bool> checkOut(double latitude, double longitude,
+      {Map<String, dynamic>? workLog}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final response = await _apiClient.post('/api/attendance/check-out', {
+      final body = {
         'latitude': latitude,
         'longitude': longitude,
-      });
+        ...?workLog, // Spread operator to include work log fields if present
+      };
+
+      final response = await _apiClient.post('/api/attendance/check-out', body);
 
       if (response['success'] == true) {
         await fetchHistory();

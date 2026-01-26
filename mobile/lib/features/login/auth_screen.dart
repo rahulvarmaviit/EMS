@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/components/glass_components.dart';
@@ -186,20 +187,15 @@ class _AuthScreenState extends State<AuthScreen>
                 const SizedBox(height: AppSpacing.xl),
 
                 // Logo/Title
-                const Icon(
-                  Icons.access_time_filled,
-                  size: 80,
-                  color: AppColors.primary,
+                // Logo/Title
+                Image.asset(
+                  'assets/AKHpng.png',
+                  height: 120,
+                  width: 120,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'AKH',
-                  style: AppTextStyles.displayLarge.copyWith(
-                    color: AppColors.secondary,
-                  ),
-                ),
-                Text(
-                  'Geo-Attendance System',
+                  'Welcome To AKH',
                   style: AppTextStyles.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -217,6 +213,7 @@ class _AuthScreenState extends State<AuthScreen>
                     labelColor: Colors.white,
                     unselectedLabelColor: AppColors.textSecondary,
                     dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
                     tabs: const [
                       Tab(text: 'Login'),
                       Tab(text: 'Sign Up'),

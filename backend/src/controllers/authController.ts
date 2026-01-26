@@ -35,7 +35,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       logger.auth('failed_login', undefined, { reason: 'user_not_found', mobile_number });
       res.status(401).json({
         success: false,
-        error: 'Invalid mobile number or password',
+        error: "You don't have an account. Please sign up.",
       });
       return;
     }
@@ -57,7 +57,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       logger.auth('failed_login', user.id, { reason: 'invalid_password' });
       res.status(401).json({
         success: false,
-        error: 'Invalid mobile number or password',
+        error: 'Incorrect password. Please try again.',
       });
       return;
     }

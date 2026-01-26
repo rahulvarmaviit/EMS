@@ -66,6 +66,7 @@ class GlassButton extends StatelessWidget {
   final VoidCallback onPressed;
   final IconData? icon;
   final bool isLoading;
+  final Color? color; // Optional custom color
 
   const GlassButton({
     super.key,
@@ -73,15 +74,18 @@ class GlassButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.isLoading = false,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final buttonColor = color ?? AppColors.primary;
+
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: buttonColor.withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -94,6 +98,10 @@ class GlassButton extends StatelessWidget {
                 HapticFeedback.lightImpact();
                 onPressed();
               },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: buttonColor,
+          foregroundColor: Colors.white,
+        ),
         child: isLoading
             ? const SizedBox(
                 width: 20,

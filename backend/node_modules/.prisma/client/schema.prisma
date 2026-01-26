@@ -7,65 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  LEAD
-  EMPLOYEE
-}
-
-enum AttendanceStatus {
-  PRESENT
-  LATE
-  HALF_DAY
-  ABSENT
-}
-
 model User {
-  id            String   @id @default(uuid())
-  mobile_number String   @unique
+  id            String         @id @default(uuid())
+  mobile_number String         @unique
   password_hash String
   full_name     String
-  role          Role     @default(EMPLOYEE)
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  
-  // Relationships
+  role          Role           @default(EMPLOYEE)
+  is_active     Boolean        @default(true)
+  created_at    DateTime       @default(now())
   team_id       String?
-  team          Team?    @relation("TeamMembers", fields: [team_id], references: [id])
-  
-  managed_team  Team?    @relation("TeamLead")
-  
   attendance    Attendance[]
   login_history LoginHistory[]
+  managed_team  Team?          @relation("TeamLead")
+  team          Team?          @relation("TeamMembers", fields: [team_id], references: [id])
 
   @@map("users")
 }
 
 model LoginHistory {
-  id            String   @id @default(uuid())
-  device_name   String?
-  ip_address    String?
-  user_agent    String?
-  logged_in_at  DateTime @default(now())
-  
-  // Relationships
-  user_id       String
-  user          User     @relation(fields: [user_id], references: [id])
+  id           String   @id @default(uuid())
+  device_name  String?
+  ip_address   String?
+  user_agent   String?
+  logged_in_at DateTime @default(now())
+  user_id      String
+  user         User     @relation(fields: [user_id], references: [id])
 
   @@index([user_id])
   @@map("login_history")
 }
 
 model Team {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  created_at  DateTime @default(now())
-
-  // Relationships
-  lead_id     String?  @unique
-  lead        User?    @relation("TeamLead", fields: [lead_id], references: [id])
-  
-  members     User[]   @relation("TeamMembers")
+  id         String   @id @default(uuid())
+  name       String   @unique
+  created_at DateTime @default(now())
+  lead_id    String?  @unique
+  lead       User?    @relation("TeamLead", fields: [lead_id], references: [id])
+  members    User[]   @relation("TeamMembers")
 
   @@map("teams")
 }
@@ -89,12 +67,30 @@ model Attendance {
   check_out_time DateTime?
   check_in_lat   Decimal
   check_in_long  Decimal
+  check_out_lat  Decimal?
+  check_out_long Decimal?
+  work_done      String?
+  project_name   String?
+  meetings       String?
+  todo_updates   String?
+  notes          String?
   status         AttendanceStatus
-  
-  // Relationships
   user_id        String
   user           User             @relation(fields: [user_id], references: [id])
 
   @@index([user_id, date])
   @@map("attendance")
+}
+
+enum Role {
+  ADMIN
+  LEAD
+  EMPLOYEE
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
 }

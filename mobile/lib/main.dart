@@ -53,8 +53,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return Consumer<AuthProvider>(
       builder: (context, auth, child) {
         // Show loading screen while checking auth status
-        if (auth.status == AuthStatus.initial ||
-            auth.status == AuthStatus.loading) {
+        if (auth.status == AuthStatus.initial) {
           return Scaffold(
             backgroundColor: AppColors.background,
             body: Center(
