@@ -58,7 +58,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       builder: (context, auth, child) {
         // Show loading screen while checking auth status
         if (auth.status == AuthStatus.initial) {
-          return Scaffold(
+          return const Scaffold(
             backgroundColor: AppColors.background,
             body: Center(
               child: Column(
@@ -66,9 +66,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 children: [
                   Icon(Icons.access_time_filled,
                       size: 64, color: AppColors.primary),
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: AppSpacing.md),
                   CircularProgressIndicator(color: AppColors.primary),
-                  const SizedBox(height: AppSpacing.md),
+                  SizedBox(height: AppSpacing.md),
                   Text('Loading...', style: AppTextStyles.bodyMedium),
                 ],
               ),

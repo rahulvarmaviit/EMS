@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/auth/auth_provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/components/glass_components.dart';
@@ -17,7 +18,10 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<TodoProvider>().loadTodos());
+    final userId = context.read<AuthProvider>().user?.id;
+    if (userId != null) {
+      Future.microtask(() => context.read<TodoProvider>().loadTodos(userId));
+    }
   }
 
   void _showTodoDialog({Todo? todoToEdit}) {
@@ -350,7 +354,7 @@ class _TodoScreenState extends State<TodoScreen> {
                           todo.description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Colors.white54,
                             fontSize: 12,
                           ),

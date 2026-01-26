@@ -6,6 +6,7 @@ import '../../models/todo.dart';
 class TodoProvider extends ChangeNotifier {
   List<Todo> _todos = [];
   bool _isLoading = false;
+  String? _currentUserId;
 
   List<Todo> get todos => _todos;
   bool get isLoading => _isLoading;
@@ -15,25 +16,35 @@ class TodoProvider extends ChangeNotifier {
   List<Todo> get completedTodos =>
       _todos.where((todo) => todo.isCompleted).toList();
 
-  Future<void> loadTodos() async {
+  Future<void> loadTodos(String userId) async {
+    _currentUserId = userId;
     _isLoading = true;
     notifyListeners();
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String? todosJson = prefs.getString('todos');
+      final String? todosJson = prefs.getString('todos_$userId');
 
       if (todosJson != null) {
         final List<dynamic> decoded = jsonDecode(todosJson);
         _todos = decoded.map((item) => Todo.fromJson(item)).toList();
         // Sort by created date descending
         _todos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      } else {
+        _todos = [];
       }
     } catch (e) {
       debugPrint('Error loading todos: $e');
+      _todos = [];
     }
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  void clearTodos() {
+    _todos = [];
+    _currentUserId = null;
     notifyListeners();
   }
 
@@ -42,6 +53,8 @@ class TodoProvider extends ChangeNotifier {
     String description = '',
     DateTime? dueDate,
   }) async {
+    if (_currentUserId == null) return;
+
     final newTodo = Todo(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
@@ -82,10 +95,12 @@ class TodoProvider extends ChangeNotifier {
   }
 
   Future<void> _saveTodos() async {
+    if (_currentUserId == null) return;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final String encoded = jsonEncode(_todos.map((t) => t.toJson()).toList());
-      await prefs.setString('todos', encoded);
+      await prefs.setString('todos_$_currentUserId', encoded);
     } catch (e) {
       debugPrint('Error saving todos: $e');
     }

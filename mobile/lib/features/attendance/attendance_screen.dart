@@ -111,7 +111,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Attendance Records',
                               style: AppTextStyles.titleLarge,
                               overflow: TextOverflow.ellipsis,
@@ -199,35 +199,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // List Header
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     child: Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                             flex: 2,
                             child: Text('Date',
                                 style: TextStyle(
                                     color: Colors.white54, fontSize: 12))),
-                        const Expanded(
+                        Expanded(
                             flex: 2,
                             child: Text('Check In',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: Colors.white54, fontSize: 12))),
-                        const Expanded(
+                        Expanded(
                             flex: 2,
                             child: Text('Check Out',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: Colors.white54, fontSize: 12))),
-                        const Expanded(
+                        Expanded(
                             flex: 2,
                             child: Text('Duration',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     color: Colors.white54, fontSize: 12))),
-                        const Expanded(
+                        Expanded(
                             flex: 2,
                             child: Center(
                                 child: Text('Status',

@@ -53,9 +53,9 @@ class WelcomeHeader extends StatelessWidget {
             if (onProfileTap != null)
               IconButton(
                 onPressed: onProfileTap,
-                icon: CircleAvatar(
+                icon: const CircleAvatar(
                   backgroundColor: AppColors.primary,
-                  child: const Icon(Icons.person, color: Colors.white),
+                  child: Icon(Icons.person, color: Colors.white),
                 ),
                 tooltip: 'Profile',
               ),

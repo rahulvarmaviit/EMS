@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../models/location.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/components/glass_components.dart';
 
 class LocationManagementScreen extends StatefulWidget {
   const LocationManagementScreen({super.key});
@@ -34,7 +36,9 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading locations: $e')),
+          SnackBar(
+              content: Text('Error loading locations: $e'),
+              backgroundColor: AppColors.error),
         );
       }
     }
@@ -53,17 +57,27 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Office Location'),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Add Office Location',
+            style: TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Location Name',
                   hintText: 'e.g., Head Office',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white30),
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.primary),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -71,10 +85,18 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                 controller: latController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Latitude',
                   hintText: 'e.g., 37.7749',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white30),
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.primary),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -82,26 +104,42 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                 controller: longController,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Longitude',
                   hintText: 'e.g., -122.4194',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white30),
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.primary),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: radiusController,
                 keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Radius (meters)',
                   hintText: 'e.g., 100',
-                  border: OutlineInputBorder(),
+                  hintStyle: TextStyle(color: Colors.white30),
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.primary),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Tip: Use Google Maps to find coordinates. Right-click on a location and copy the latitude/longitude.',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
@@ -109,7 +147,8 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -117,7 +156,9 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                   latController.text.isEmpty ||
                   longController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
+                  const SnackBar(
+                      content: Text('Please fill all fields'),
+                      backgroundColor: AppColors.warning),
                 );
                 return;
               }
@@ -135,17 +176,20 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Location added successfully'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: AppColors.success,
                   ),
                 );
               } catch (e) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: AppColors.error),
                 );
               }
             },
-            child: const Text('Add'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Add', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -156,17 +200,21 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Location?'),
-        content: Text('Are you sure you want to delete "${location.name}"?'),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Delete Location?',
+            style: TextStyle(color: Colors.white)),
+        content: Text('Are you sure you want to delete "${location.name}"?',
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -181,14 +229,15 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location deleted'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
+            SnackBar(
+                content: Text('Error: $e'), backgroundColor: AppColors.error),
           );
         }
       }
@@ -198,85 +247,130 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Office Locations'),
+        title: const Text('Office Locations',
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddLocationDialog,
-        child: const Icon(Icons.add),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadLocations,
-              child: _locations.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.location_off,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No office locations defined',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Add a location to enable GPS check-in',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _locations.length,
-                      itemBuilder: (context, index) {
-                        final location = _locations[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: const CircleAvatar(
-                              backgroundColor: Colors.blue,
-                              child: Icon(
-                                Icons.location_on,
-                                color: Colors.white,
-                              ),
-                            ),
-                            title: Text(
-                              location.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF2E003E),
+                  Colors.black,
+                  Colors.black,
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadLocations,
+                    child: _locations.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  'Lat: ${location.latitude.toStringAsFixed(6)}, Long: ${location.longitude.toStringAsFixed(6)}',
-                                  style: const TextStyle(fontSize: 12),
+                                Icon(
+                                  Icons.location_off,
+                                  size: 64,
+                                  color: Colors.white24,
                                 ),
+                                SizedBox(height: 16),
                                 Text(
-                                  'Radius: ${location.radiusMeters}m',
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  'No office locations defined',
+                                  style: TextStyle(color: Colors.white54),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Add a location to enable GPS check-in',
+                                  style: TextStyle(
+                                      color: Colors.white38, fontSize: 12),
                                 ),
                               ],
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteLocation(location),
-                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            itemCount: _locations.length,
+                            itemBuilder: (context, index) {
+                              final location = _locations[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.md),
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            AppColors.primary.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      location.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Lat: ${location.latitude.toStringAsFixed(6)}, Long: ${location.longitude.toStringAsFixed(6)}',
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.white60),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Radius: ${location.radiusMeters}m',
+                                          style: const TextStyle(
+                                            color: AppColors.secondary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: AppColors.error),
+                                      onPressed: () =>
+                                          _deleteLocation(location),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
-            ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }

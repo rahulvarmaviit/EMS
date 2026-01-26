@@ -17,4 +17,10 @@ router.get('/self', leaveController.getMyLeaves);
 // Get team leave requests (Lead/Admin)
 router.get('/team', leaveController.getTeamLeaves);
 
+// Get specific user leave requests (Lead/Admin)
+router.get('/user/:userId', leaveController.getUserLeaves);
+
+// Update leave status (Approve/Reject)
+router.patch('/:id/status', leaveController.updateLeaveStatus);
+
 export default router;

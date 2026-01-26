@@ -193,7 +193,7 @@ class _AuthScreenState extends State<AuthScreen>
                   width: 120,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
+                const Text(
                   'Welcome To AKH',
                   style: AppTextStyles.bodyMedium,
                 ),

@@ -30,49 +30,54 @@ declare global {
  */
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
   try {
-    // Get token from Authorization header
+    // Get token from Authorization header or query parameter
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ 
-        success: false, 
-        error: 'No token provided. Please login.' 
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token as string;
+    }
+
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        error: 'No token provided. Please login.'
       });
       return;
     }
-    
-    const token = authHeader.split(' ')[1];
-    
+
     // Verify token
     const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
-    
+
     // Attach user to request for use in controllers
     req.user = decoded;
-    
+
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       logger.auth('failed_login', undefined, { reason: 'token_expired' });
-      res.status(401).json({ 
-        success: false, 
-        error: 'Token expired. Please login again.' 
+      res.status(401).json({
+        success: false,
+        error: 'Token expired. Please login again.'
       });
       return;
     }
-    
+
     if (error instanceof jwt.JsonWebTokenError) {
       logger.auth('failed_login', undefined, { reason: 'invalid_token' });
-      res.status(401).json({ 
-        success: false, 
-        error: 'Invalid token. Please login again.' 
+      res.status(401).json({
+        success: false,
+        error: 'Invalid token. Please login again.'
       });
       return;
     }
-    
+
     logger.error('Auth middleware error', { error: (error as Error).message });
-    res.status(500).json({ 
-      success: false, 
-      error: 'Authentication failed' 
+    res.status(500).json({
+      success: false,
+      error: 'Authentication failed'
     });
   }
 }
@@ -84,13 +89,13 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
 export function optionalAuthenticate(req: Request, res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
       req.user = decoded;
     }
-    
+
     next();
   } catch (error) {
     // Token invalid or expired, continue without user
@@ -107,13 +112,13 @@ export function authorize(...allowedRoles: ('ADMIN' | 'LEAD' | 'EMPLOYEE')[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     // Must be authenticated first
     if (!req.user) {
-      res.status(401).json({ 
-        success: false, 
-        error: 'Not authenticated' 
+      res.status(401).json({
+        success: false,
+        error: 'Not authenticated'
       });
       return;
     }
-    
+
     // Check if user's role is in allowed list
     if (!allowedRoles.includes(req.user.role)) {
       logger.warn('Unauthorized access attempt', {
@@ -122,14 +127,14 @@ export function authorize(...allowedRoles: ('ADMIN' | 'LEAD' | 'EMPLOYEE')[]) {
         requiredRoles: allowedRoles,
         path: req.path,
       });
-      
-      res.status(403).json({ 
-        success: false, 
-        error: 'You do not have permission to access this resource' 
+
+      res.status(403).json({
+        success: false,
+        error: 'You do not have permission to access this resource'
       });
       return;
     }
-    
+
     next();
   };
 }

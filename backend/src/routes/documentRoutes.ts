@@ -26,4 +26,13 @@ router.post('/upload', authenticate, (req, res, next) => {
 // Get all documents for user
 router.get('/', authenticate, getDocuments);
 
+// Get documents for a specific user (Admin/Lead)
+import { getUserDocuments, downloadDocument } from '../controllers/documentController';
+import { authorize } from '../middlewares/auth';
+
+router.get('/user/:userId', authenticate, authorize('ADMIN', 'LEAD'), getUserDocuments);
+
+// Download document (Admin/Lead/Owner)
+router.get('/download/:id', authenticate, downloadDocument);
+
 export default router;

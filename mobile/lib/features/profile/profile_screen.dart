@@ -4,7 +4,6 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/api/api_client.dart';
 import '../../models/user.dart';
 import '../../models/team.dart';
-import '../../core/components/glass_components.dart'; // Assuming we want consistent UI
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -101,22 +100,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () async {
               if (formKey.currentState!.validate()) {
-                final success = await context
-                    .read<AuthProvider>()
-                    .updateProfile(email: emailController.text);
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
+                final provider = context.read<AuthProvider>();
 
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (success) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Email updated successfully')),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to update email')),
-                    );
-                  }
+                final success =
+                    await provider.updateProfile(email: emailController.text);
+
+                if (!mounted) return;
+
+                navigator.pop();
+                if (success) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Email updated successfully')),
+                  );
+                } else {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Failed to update email')),
+                  );
                 }
               }
             },

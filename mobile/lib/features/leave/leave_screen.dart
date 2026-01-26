@@ -30,7 +30,22 @@ class _LeaveScreenState extends State<LeaveScreen> {
     Future.microtask(() => context.read<LeaveProvider>().fetchLeaveHistory());
   }
 
+  bool _isDayEnabled(DateTime day) {
+    // Enable today and future dates
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final checkDay = DateTime(day.year, day.month, day.day);
+    return !checkDay.isBefore(today);
+  }
+
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    if (!_isDayEnabled(selectedDay)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot select past dates')),
+      );
+      return;
+    }
+
     if (!isSameDay(_selectedDay, selectedDay)) {
       setState(() {
         _selectedDay = selectedDay;
@@ -42,6 +57,13 @@ class _LeaveScreenState extends State<LeaveScreen> {
   }
 
   void _onRangeSelected(DateTime? start, DateTime? end, DateTime focusedDay) {
+    if (start != null && !_isDayEnabled(start)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot select past dates')),
+      );
+      return;
+    }
+
     setState(() {
       _selectedDay = null;
       _focusedDay = focusedDay;
@@ -61,72 +83,104 @@ class _LeaveScreenState extends State<LeaveScreen> {
       return;
     }
 
+    // Double check (though UI should prevent it)
+    if (!_isDayEnabled(start)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot request leave for past dates')),
+      );
+      return;
+    }
+
     final reasonController = TextEditingController();
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        backgroundColor: Colors.black.withOpacity(0.8),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            side: const BorderSide(color: AppColors.glassBorder)),
-        title: Text('Request Leave', style: AppTextStyles.titleMedium),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Date: ${DateFormat('MMM d').format(start)} ${end != null && end != start ? '- ${DateFormat('MMM d').format(end)}' : ''}',
-              style: const TextStyle(color: Colors.white70),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(AppSpacing.md),
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: Colors.black
+                  .withOpacity(0.9), // Slightly darker for better visibility
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.glassBorder),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.md),
-            GlassTextField(
-              controller: reasonController,
-              label: 'Reason',
-              hint: 'Enter check reason...',
-              maxLines: 3,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Request Leave', style: AppTextStyles.titleMedium),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Date: ${DateFormat('MMM d').format(start)} ${end != null && end != start ? '- ${DateFormat('MMM d').format(end)}' : ''}',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                GlassTextField(
+                  controller: reasonController,
+                  label: 'Reason',
+                  hint: 'Enter check reason...',
+                  maxLines: 3,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    GlassButton(
+                      text: 'Submit',
+                      onPressed: () async {
+                        if (reasonController.text.isEmpty) return;
+
+                        final navigator = Navigator.of(context);
+                        final messenger = ScaffoldMessenger.of(context);
+                        final leaveProvider = context.read<LeaveProvider>();
+
+                        navigator.pop();
+
+                        final success = await leaveProvider.applyForLeave(
+                          startDate: start,
+                          endDate: end ?? start,
+                          reason: reasonController.text,
+                        );
+
+                        if (!mounted) return;
+
+                        if (success) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Leave request submitted successfully')),
+                          );
+                        } else {
+                          final error = leaveProvider.error;
+                          messenger.showSnackBar(
+                            SnackBar(
+                                content:
+                                    Text(error ?? 'Failed to submit request')),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          GlassButton(
-            text: 'Submit',
-            onPressed: () async {
-              if (reasonController.text.isEmpty) return;
-
-              final navigator = Navigator.of(context);
-              final messenger = ScaffoldMessenger.of(context);
-              final leaveProvider = context.read<LeaveProvider>();
-
-              navigator.pop();
-
-              final success = await leaveProvider.applyForLeave(
-                startDate: start,
-                endDate: end ?? start,
-                reason: reasonController.text,
-              );
-
-              if (!mounted) return;
-
-              if (success) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                      content: Text('Leave request submitted successfully')),
-                );
-              } else {
-                final error = leaveProvider.error;
-                messenger.showSnackBar(
-                  SnackBar(content: Text(error ?? 'Failed to submit request')),
-                );
-              }
-            },
-          ),
-        ],
       ),
     );
   }
@@ -137,6 +191,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
     final leaves = leaveProvider.leaves;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Leave Calendar'),
@@ -186,6 +241,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                           rangeStartDay: _rangeStart,
                           rangeEndDay: _rangeEnd,
                           rangeSelectionMode: RangeSelectionMode.toggledOn,
+                          enabledDayPredicate: _isDayEnabled,
                           onDaySelected: _onDaySelected,
                           onRangeSelected: _onRangeSelected,
                           onFormatChanged: (format) {
@@ -254,7 +310,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   const SizedBox(height: AppSpacing.lg),
 
                   // History Header
-                  Text(
+                  const Text(
                     'My Leave Requests',
                     style: AppTextStyles.titleMedium,
                   ),

@@ -44,4 +44,24 @@ class User {
   bool get isAdmin => role == 'ADMIN';
   bool get isLead => role == 'LEAD';
   bool get isEmployee => role == 'EMPLOYEE';
+
+  User copyWith({
+    String? id,
+    String? mobileNumber,
+    String? fullName,
+    String? role,
+    String? email,
+    String? teamId,
+    String? teamName,
+  }) {
+    return User(
+      id: id ?? this.id,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      fullName: fullName ?? this.fullName,
+      role: role ?? this.role,
+      email: email ?? this.email,
+      teamId: teamId ?? this.teamId,
+      teamName: teamName ?? this.teamName,
+    );
+  }
 }

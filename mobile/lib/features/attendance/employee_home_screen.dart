@@ -182,7 +182,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
               Icon(Icons.access_time,
                   color: AppColors.primary.withOpacity(0.8)),
               const SizedBox(width: AppSpacing.sm),
-              Text(
+              const Text(
                 "Today's Attendance",
                 style: AppTextStyles.titleMedium,
               ),
@@ -261,7 +261,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
               Icon(Icons.calendar_today,
                   color: AppColors.secondary.withOpacity(0.8)),
               const SizedBox(width: AppSpacing.sm),
-              Text(
+              const Text(
                 "Upcoming Events",
                 style: AppTextStyles.titleMedium,
               ),
@@ -271,7 +271,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
           Center(
             child: Column(
               children: [
-                Icon(Icons.event_busy, size: 48, color: Colors.white24),
+                const Icon(Icons.event_busy, size: 48, color: Colors.white24),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   "No upcoming events",

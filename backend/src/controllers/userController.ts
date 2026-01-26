@@ -159,7 +159,7 @@ export async function getUser(req: Request, res: Response): Promise<void> {
 export async function assignTeam(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { team_id, is_lead } = req.body;
+    const { team_id, role, is_lead } = req.body;
 
     // Verify user exists
     const user = await prisma.user.findUnique({
@@ -189,22 +189,55 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // Update user's team
+    // Determine the new role
+    let newRole = user.role;
+    if (role) {
+      // Explicit role update
+      newRole = role;
+    } else if (is_lead !== undefined) {
+      // Legacy support/UI checkbox support
+      newRole = is_lead ? 'LEAD' : 'EMPLOYEE';
+    }
+
+    // Validate role
+    if (!['ADMIN', 'LEAD', 'EMPLOYEE'].includes(newRole)) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid role',
+      });
+      return;
+    }
+
+    // Update user's team and role
     await prisma.user.update({
       where: { id },
-      data: { team_id: team_id || null },
+      data: {
+        team_id: team_id || null, // Allow removing from team by passing null
+        role: newRole
+      },
     });
 
-    // If making user a lead, update team's lead_id and user's role
-    if (is_lead && team_id) {
-      await prisma.team.update({
-        where: { id: team_id },
-        data: { lead_id: id },
-      });
-      await prisma.user.update({
-        where: { id },
-        data: { role: 'LEAD' },
-      });
+    // Handle Team Lead logic
+    if (team_id) {
+      if (newRole === 'LEAD') {
+        // Set this user as the lead of the team
+        await prisma.team.update({
+          where: { id: team_id },
+          data: { lead_id: id },
+        });
+      } else {
+        // If user was the lead but is no longer LEAD (or changed teams), 
+        // we might need to unset the lead_id of the team... 
+        // For simplicity, if we are NOT setting them as lead, we don't automatically unset the *current* lead of the team 
+        // unless it WAS this user.
+        const currentTeam = await prisma.team.findUnique({ where: { id: team_id } });
+        if (currentTeam?.lead_id === id) {
+          await prisma.team.update({
+            where: { id: team_id },
+            data: { lead_id: null }
+          });
+        }
+      }
     }
 
     // Fetch updated user
@@ -215,16 +248,16 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
       },
     });
 
-    logger.info('User team assignment', {
+    logger.info('User updated (assignTeam)', {
       userId: id,
       teamId: team_id,
-      isLead: is_lead,
+      role: newRole,
       assignedBy: req.user?.userId,
     });
 
     res.json({
       success: true,
-      message: 'Team assignment updated',
+      message: 'User updated successfully',
       data: {
         user: {
           id: updatedUser!.id,
@@ -239,7 +272,7 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
     logger.error('Assign team error', { error: (error as Error).message });
     res.status(500).json({
       success: false,
-      error: 'Failed to assign team',
+      error: 'Failed to update user',
     });
   }
 }

@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/api/api_client.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/components/glass_components.dart';
 import '../../models/team.dart';
 import '../../models/user.dart';
 import '../admin/location_management_screen.dart';
+import '../admin/team_details_screen.dart';
+import '../admin/user_details_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -46,7 +50,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -61,8 +68,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Admin Dashboard',
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.location_on),
@@ -81,163 +93,256 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Stats Cards
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStatCard(
-                            'Total Users',
-                            _users.length.toString(),
-                            Icons.people,
-                            Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildStatCard(
-                            'Teams',
-                            _teams.length.toString(),
-                            Icons.groups,
-                            Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Teams Section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Teams',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon:
-                              const Icon(Icons.add_circle, color: Colors.blue),
-                          onPressed: () => _showCreateTeamDialog(),
-                        ),
-                      ],
-                    ),
-                    ..._teams.map((team) => _buildTeamCard(team)),
-
-                    const SizedBox(height: 24),
-
-                    // Users Section
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Users',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon:
-                              const Icon(Icons.person_add, color: Colors.blue),
-                          onPressed: () => _showCreateUserDialog(),
-                        ),
-                      ],
-                    ),
-                    ..._users.map((user) => _buildUserCard(user)),
-                  ],
-                ),
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF2E003E),
+                  Colors.black,
+                  Colors.black,
+                ],
               ),
             ),
+          ),
+
+          SafeArea(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Stats Cards
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Total Users',
+                                  _users.length.toString(),
+                                  Icons.people,
+                                  AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Teams',
+                                  _teams.length.toString(),
+                                  Icons.groups,
+                                  AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.xl),
+
+                          // Teams Section
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Teams',
+                                style: AppTextStyles.titleLarge
+                                    .copyWith(color: Colors.white),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle,
+                                    color: AppColors.primary),
+                                onPressed: () => _showCreateTeamDialog(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          if (_teams.isEmpty)
+                            const Center(
+                                child: Text("No teams found",
+                                    style: TextStyle(color: Colors.white54))),
+                          ..._teams.map((team) => _buildTeamCard(team)),
+
+                          const SizedBox(height: AppSpacing.xl),
+
+                          // Users Section
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Users',
+                                style: AppTextStyles.titleLarge
+                                    .copyWith(color: Colors.white),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.person_add,
+                                    color: AppColors.primary),
+                                onPressed: () => _showCreateUserDialog(),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          if (_users.isEmpty)
+                            const Center(
+                                child: Text("No users found",
+                                    style: TextStyle(color: Colors.white54))),
+                          ..._users.map((user) => _buildUserCard(user)),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildStatCard(
       String title, String value, IconData icon, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+    return GlassContainer(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: color),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            style: AppTextStyles.displaySmall.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            Text(title, style: const TextStyle(color: Colors.grey)),
-          ],
-        ),
+          ),
+          Text(title, style: const TextStyle(color: Colors.white70)),
+        ],
       ),
     );
   }
 
   Widget _buildTeamCard(Team team) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Icon(Icons.groups, color: Colors.white),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TeamDetailsScreen(team: team),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.groups, color: AppColors.secondary),
+            ),
+            title: Text(team.name,
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            subtitle: Text(
+              team.leadName != null
+                  ? 'Lead: ${team.leadName}'
+                  : 'No lead assigned',
+              style: const TextStyle(color: Colors.white60),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${team.memberCount ?? 0}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
         ),
-        title: Text(team.name),
-        subtitle: Text(team.leadName != null
-            ? 'Lead: ${team.leadName}'
-            : 'No lead assigned'),
-        trailing: Text('${team.memberCount ?? 0} members'),
       ),
     );
   }
 
   Widget _buildUserCard(User user) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: () => _showAssignTeamDialog(user),
-        leading: CircleAvatar(
-          backgroundColor: user.isAdmin
-              ? Colors.purple
-              : user.isLead
-                  ? Colors.orange
-                  : Colors.green,
-          child: Text(
-            user.fullName.isNotEmpty
-                ? user.fullName.substring(0, 1).toUpperCase()
-                : 'U',
-            style: const TextStyle(color: Colors.white),
+    final avatarColor = user.isAdmin
+        ? Colors.purple
+        : user.isLead
+            ? Colors.orange
+            : Colors.green;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        child: ListTile(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AdminUserDetailsScreen(user: user),
+              ),
+            );
+          },
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            backgroundColor: avatarColor,
+            child: Text(
+              user.fullName.isNotEmpty
+                  ? user.fullName.substring(0, 1).toUpperCase()
+                  : 'U',
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          title: Text(user.fullName,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
+          subtitle: Text(
+            '${user.role} | ${user.teamName ?? "No team"}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white70),
+                onPressed: () => _showAssignTeamDialog(user),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
           ),
         ),
-        title: Text(user.fullName),
-        subtitle: Text('${user.role} | ${user.teamName ?? "No team"}'),
-        trailing: const Icon(Icons.chevron_right),
       ),
     );
   }
 
   void _showAssignTeamDialog(User user) {
     String? selectedTeamId = user.teamId;
-    bool makeLead = user.isLead;
+    String selectedRole = user.role; // Default to current role
+    // "Make Team Lead" checkbox logic is effectively replaced by Role dropdown,
+    // but for UX we can keep it if role is LEAD, or just rely on the dropdown.
+    // Let's rely on the dropdown for clarity as requested.
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Manage ${user.fullName}'),
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: Text('Manage ${user.fullName}',
+              style: const TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -245,20 +350,57 @@ class _AdminDashboardState extends State<AdminDashboard> {
               children: [
                 Text(
                   'Phone: ${user.mobileNumber}',
-                  style: const TextStyle(color: Colors.grey),
+                  style: const TextStyle(color: Colors.white70),
                 ),
-                Text(
-                  'Current Role: ${user.role}',
-                  style: const TextStyle(color: Colors.grey),
+                const SizedBox(height: 16),
+
+                // Role Selection
+                DropdownButtonFormField<String>(
+                  value: ['ADMIN', 'LEAD', 'EMPLOYEE'].contains(selectedRole)
+                      ? selectedRole
+                      : 'EMPLOYEE',
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'EMPLOYEE', child: Text('Employee')),
+                    DropdownMenuItem(value: 'LEAD', child: Text('Team Lead')),
+                    DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedRole = value!;
+                      // If Admin, usually no team needed, but can keep.
+                      // If Lead, must have team.
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
 
                 // Team Assignment
                 DropdownButtonFormField<String?>(
                   value: selectedTeamId,
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Assign to Team',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
                   ),
                   items: [
                     const DropdownMenuItem(
@@ -273,21 +415,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   onChanged: (value) {
                     setState(() {
                       selectedTeamId = value;
-                      if (value == null) makeLead = false;
                     });
                   },
                 ),
-                const SizedBox(height: 16),
-
-                // Make Team Lead checkbox (only show if team is selected and not admin)
-                if (selectedTeamId != null && !user.isAdmin)
-                  CheckboxListTile(
-                    title: const Text('Make Team Lead'),
-                    subtitle: const Text('Promotes user to LEAD role'),
-                    value: makeLead,
-                    onChanged: (value) {
-                      setState(() => makeLead = value ?? false);
-                    },
+                if (selectedRole == 'LEAD' && selectedTeamId == null)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Warning: Team Leads must be assigned to a team.',
+                      style: TextStyle(color: AppColors.warning, fontSize: 12),
+                    ),
                   ),
               ],
             ),
@@ -295,32 +432,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child:
+                  const Text('Cancel', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               onPressed: () async {
+                if (selectedRole == 'LEAD' && selectedTeamId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Please assign a team for the Team Lead')),
+                  );
+                  return;
+                }
+
                 try {
                   await _apiClient.patch('/api/users/${user.id}/assign-team', {
                     'team_id': selectedTeamId,
-                    'is_lead': makeLead,
+                    'role': selectedRole,
                   });
                   if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadData();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Team assignment updated'),
-                      backgroundColor: Colors.green,
+                      content: Text('User updated successfully'),
+                      backgroundColor: AppColors.success,
                     ),
                   );
                 } catch (e) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
+                    SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: AppColors.error),
                   );
                 }
               },
-              child: const Text('Save'),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -334,18 +485,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create Team'),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Create Team', style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: nameController,
+          style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
             labelText: 'Team Name',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: Colors.white70),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: AppColors.primary),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child:
+                const Text('Cancel', style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -360,12 +520,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 } catch (e) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
+                    SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: AppColors.error),
                   );
                 }
               }
             },
-            child: const Text('Create'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Create', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -382,42 +545,74 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Create User'),
+          backgroundColor: const Color(0xFF1E1E1E),
+          title:
+              const Text('Create User', style: TextStyle(color: Colors.white)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Full Name',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: mobileController,
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Mobile Number',
                     hintText: '+1234567890',
-                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(color: Colors.white30),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: passwordController,
                   obscureText: true,
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Password',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedRole,
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: 'Role',
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white24),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -435,7 +630,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child:
+                  const Text('Cancel', style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -455,12 +651,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   } catch (e) {
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
+                      SnackBar(
+                          content: Text('Error: $e'),
+                          backgroundColor: AppColors.error),
                     );
                   }
                 }
               },
-              child: const Text('Create'),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child:
+                  const Text('Create', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

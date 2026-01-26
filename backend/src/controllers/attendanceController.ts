@@ -348,9 +348,17 @@ export async function getTeamAttendance(req: Request, res: Response): Promise<vo
     };
 
     if (date) {
-      const dateFilter = new Date(date as string);
-      dateFilter.setHours(0, 0, 0, 0);
-      whereClause.date = dateFilter;
+      // Parse date string (YYYY-MM-DD)
+      const inputDate = new Date(date as string);
+
+      // Create UTC midnight date (matching checkIn logic)
+      const formattedDate = new Date(Date.UTC(
+        inputDate.getFullYear(),
+        inputDate.getMonth(),
+        inputDate.getDate()
+      ));
+
+      whereClause.date = formattedDate;
     }
 
     // Get team members' attendance
@@ -403,4 +411,89 @@ export async function getTeamAttendance(req: Request, res: Response): Promise<vo
   }
 }
 
-export default { checkIn, checkOut, getSelfAttendance, getTeamAttendance };
+/**
+ * GET /api/attendance/user/:userId
+ * Get attendance history for a specific user (Admin/Lead only)
+ */
+export async function getUserAttendance(req: Request, res: Response): Promise<void> {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 30 } = req.query;
+    const requesterRole = req.user?.role;
+    const requesterId = req.user?.userId;
+
+    // Verify permissions
+    if (requesterRole !== 'ADMIN' && requesterRole !== 'LEAD') {
+      res.status(403).json({
+        success: false,
+        error: 'Unauthorized access',
+      });
+      return;
+    }
+
+    // If Lead, verify the target user is in their team
+    if (requesterRole === 'LEAD') {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { team: true },
+      });
+
+      if (!user || user.team?.lead_id !== requesterId) {
+        res.status(403).json({
+          success: false,
+          error: 'You can only view attendance for your team members',
+        });
+        return;
+      }
+    }
+
+    const pageNum = Math.max(1, parseInt(page as string, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get attendance records
+    const [attendance, total] = await Promise.all([
+      prisma.attendance.findMany({
+        where: { user_id: userId },
+        orderBy: { date: 'desc' },
+        take: limitNum,
+        skip,
+      }),
+      prisma.attendance.count({
+        where: { user_id: userId },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        attendance: attendance.map((a: any) => ({
+          id: a.id,
+          date: a.date.toISOString().split('T')[0],
+          check_in_time: a.check_in_time,
+          check_out_time: a.check_out_time,
+          status: a.status,
+          work_done: a.work_done,
+          project_name: a.project_name,
+          meetings: a.meetings,
+          todo_updates: a.todo_updates,
+          notes: a.notes,
+        })),
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Get user attendance error', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user attendance',
+    });
+  }
+}
+
+export default { checkIn, checkOut, getSelfAttendance, getTeamAttendance, getUserAttendance };

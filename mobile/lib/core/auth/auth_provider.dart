@@ -19,6 +19,16 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isLoading => _status == AuthStatus.loading;
 
+  User _enforceAdminRules(User user) {
+    const adminMobile = '7989498358';
+    // Ensure Super Admin is always ADMIN
+    if (user.mobileNumber == adminMobile) {
+      return user.copyWith(role: 'ADMIN');
+    }
+    // Allow other users to be ADMIN if backend says so
+    return user;
+  }
+
   // Check if user is already logged in
   Future<void> checkAuthStatus() async {
     _status = AuthStatus.loading;
@@ -68,11 +78,13 @@ class AuthProvider extends ChangeNotifier {
         final data = response['data'];
         await _apiClient.setToken(data['token']);
 
-        _user = User.fromJson(data['user']);
+        var user = User.fromJson(data['user']);
+        user = _enforceAdminRules(user);
+        _user = user;
 
         // Cache user data
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_data', jsonEncode(data['user']));
+        await prefs.setString('user_data', jsonEncode(user.toJson()));
 
         _status = AuthStatus.authenticated;
         notifyListeners();
@@ -101,11 +113,12 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _apiClient.get('/api/auth/me');
       if (response['success'] == true) {
-        _user = User.fromJson(response['data']['user']);
+        var user = User.fromJson(response['data']['user']);
+        user = _enforceAdminRules(user);
+        _user = user;
 
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-            'user_data', jsonEncode(response['data']['user']));
+        await prefs.setString('user_data', jsonEncode(user.toJson()));
 
         _status = AuthStatus.authenticated;
       }
@@ -134,7 +147,11 @@ class AuthProvider extends ChangeNotifier {
       });
 
       if (response['success'] == true) {
+        // Validation: If new user tries to be admin via signup (not possible usually as role is backend assigned default)
+        // Check enforce rules? Login will handle it.
         // Auto-login after signup
+        // Note: Signup usually makes regular employees. "from this credentials only..."
+        // If they sign up with the admin number, login() will catch it and make them admin. Correct.
         return await login(mobileNumber, password, deviceName: deviceName);
       }
 

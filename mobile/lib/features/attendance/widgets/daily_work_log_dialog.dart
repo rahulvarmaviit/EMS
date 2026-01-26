@@ -184,7 +184,7 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: AppColors.glassBorder),
+                        side: const BorderSide(color: AppColors.glassBorder),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
                         ),
