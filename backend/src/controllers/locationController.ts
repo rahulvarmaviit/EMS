@@ -1,8 +1,8 @@
 // Location Controller
-// Purpose: Office location management (Admin only)
+// Purpose: Office location management (Admin only) using Prisma
 
 import { Request, Response } from 'express';
-import { query } from '../config/database';
+import { prisma } from '../config/database';
 import { validateCoordinates } from '../services/geoService';
 import { logger } from '../utils/logger';
 
@@ -12,17 +12,23 @@ import { logger } from '../utils/logger';
  */
 export async function listLocations(req: Request, res: Response): Promise<void> {
   try {
-    const result = await query(`
-      SELECT id, name, latitude, longitude, radius_meters, is_active, created_at
-      FROM locations
-      WHERE is_active = true
-      ORDER BY name
-    `);
-    
+    const locations = await prisma.location.findMany({
+      where: { is_active: true },
+      orderBy: { name: 'asc' },
+    });
+
     res.json({
       success: true,
       data: {
-        locations: result.rows,
+        locations: locations.map(loc => ({
+          id: loc.id,
+          name: loc.name,
+          latitude: Number(loc.latitude),
+          longitude: Number(loc.longitude),
+          radius_meters: loc.radius_meters,
+          is_active: loc.is_active,
+          created_at: loc.created_at,
+        })),
       },
     });
   } catch (error) {
@@ -41,7 +47,7 @@ export async function listLocations(req: Request, res: Response): Promise<void> 
 export async function createLocation(req: Request, res: Response): Promise<void> {
   try {
     const { name, latitude, longitude, radius_meters = 50 } = req.body;
-    
+
     // Validate required fields
     if (!name || name.trim().length === 0) {
       res.status(400).json({
@@ -50,7 +56,7 @@ export async function createLocation(req: Request, res: Response): Promise<void>
       });
       return;
     }
-    
+
     // Validate coordinates
     if (!validateCoordinates(latitude, longitude)) {
       res.status(400).json({
@@ -59,7 +65,7 @@ export async function createLocation(req: Request, res: Response): Promise<void>
       });
       return;
     }
-    
+
     // Validate radius
     if (radius_meters < 1 || radius_meters > 1000) {
       res.status(400).json({
@@ -68,26 +74,35 @@ export async function createLocation(req: Request, res: Response): Promise<void>
       });
       return;
     }
-    
+
     // Create location
-    const result = await query(
-      `INSERT INTO locations (name, latitude, longitude, radius_meters)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, latitude, longitude, radius_meters, created_at`,
-      [name.trim(), latitude, longitude, radius_meters]
-    );
-    
+    const newLocation = await prisma.location.create({
+      data: {
+        name: name.trim(),
+        latitude,
+        longitude,
+        radius_meters,
+      },
+    });
+
     logger.info('Location created', {
-      locationId: result.rows[0].id,
+      locationId: newLocation.id,
       name: name.trim(),
       createdBy: req.user?.userId,
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Location created successfully',
       data: {
-        location: result.rows[0],
+        location: {
+          id: newLocation.id,
+          name: newLocation.name,
+          latitude: Number(newLocation.latitude),
+          longitude: Number(newLocation.longitude),
+          radius_meters: newLocation.radius_meters,
+          created_at: newLocation.created_at,
+        },
       },
     });
   } catch (error) {
@@ -107,32 +122,27 @@ export async function updateLocation(req: Request, res: Response): Promise<void>
   try {
     const { id } = req.params;
     const { name, latitude, longitude, radius_meters } = req.body;
-    
+
     // Verify location exists
-    const existingLocation = await query(
-      'SELECT id FROM locations WHERE id = $1',
-      [id]
-    );
-    
-    if (existingLocation.rows.length === 0) {
+    const existingLocation = await prisma.location.findUnique({
+      where: { id },
+    });
+
+    if (!existingLocation) {
       res.status(404).json({
         success: false,
         error: 'Location not found',
       });
       return;
     }
-    
-    // Build update query dynamically
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-    
+
+    // Build update data
+    const updateData: any = {};
+
     if (name !== undefined) {
-      updates.push(`name = $${paramIndex}`);
-      values.push(name.trim());
-      paramIndex++;
+      updateData.name = name.trim();
     }
-    
+
     if (latitude !== undefined || longitude !== undefined) {
       // If updating coordinates, need both
       if ((latitude !== undefined) !== (longitude !== undefined)) {
@@ -142,7 +152,7 @@ export async function updateLocation(req: Request, res: Response): Promise<void>
         });
         return;
       }
-      
+
       if (!validateCoordinates(latitude, longitude)) {
         res.status(400).json({
           success: false,
@@ -150,16 +160,11 @@ export async function updateLocation(req: Request, res: Response): Promise<void>
         });
         return;
       }
-      
-      updates.push(`latitude = $${paramIndex}`);
-      values.push(latitude);
-      paramIndex++;
-      
-      updates.push(`longitude = $${paramIndex}`);
-      values.push(longitude);
-      paramIndex++;
+
+      updateData.latitude = latitude;
+      updateData.longitude = longitude;
     }
-    
+
     if (radius_meters !== undefined) {
       if (radius_meters < 1 || radius_meters > 1000) {
         res.status(400).json({
@@ -168,37 +173,40 @@ export async function updateLocation(req: Request, res: Response): Promise<void>
         });
         return;
       }
-      
-      updates.push(`radius_meters = $${paramIndex}`);
-      values.push(radius_meters);
-      paramIndex++;
+
+      updateData.radius_meters = radius_meters;
     }
-    
-    if (updates.length === 0) {
+
+    if (Object.keys(updateData).length === 0) {
       res.status(400).json({
         success: false,
         error: 'No fields to update',
       });
       return;
     }
-    
-    values.push(id);
-    
-    const result = await query(
-      `UPDATE locations SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-      values
-    );
-    
+
+    const updatedLocation = await prisma.location.update({
+      where: { id },
+      data: updateData,
+    });
+
     logger.info('Location updated', {
       locationId: id,
       updatedBy: req.user?.userId,
     });
-    
+
     res.json({
       success: true,
       message: 'Location updated successfully',
       data: {
-        location: result.rows[0],
+        location: {
+          id: updatedLocation.id,
+          name: updatedLocation.name,
+          latitude: Number(updatedLocation.latitude),
+          longitude: Number(updatedLocation.longitude),
+          radius_meters: updatedLocation.radius_meters,
+          is_active: updatedLocation.is_active,
+        },
       },
     });
   } catch (error) {
@@ -217,25 +225,25 @@ export async function updateLocation(req: Request, res: Response): Promise<void>
 export async function deleteLocation(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    
-    const result = await query(
-      'UPDATE locations SET is_active = false WHERE id = $1 RETURNING id, name',
-      [id]
-    );
-    
-    if (result.rows.length === 0) {
+
+    try {
+      await prisma.location.update({
+        where: { id },
+        data: { is_active: false },
+      });
+    } catch (e) {
       res.status(404).json({
         success: false,
         error: 'Location not found',
       });
       return;
     }
-    
+
     logger.info('Location deleted', {
       locationId: id,
       deletedBy: req.user?.userId,
     });
-    
+
     res.json({
       success: true,
       message: 'Location deleted successfully',

@@ -1,9 +1,9 @@
 // Authentication Controller
-// Purpose: Handle login, registration, and token generation
+// Purpose: Handle login, registration, and token generation using Prisma
 
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { query } from '../config/database';
+import { prisma } from '../config/database';
 import { generateToken } from '../middlewares/auth';
 import { logger } from '../utils/logger';
 
@@ -15,7 +15,7 @@ import { logger } from '../utils/logger';
 export async function login(req: Request, res: Response): Promise<void> {
   try {
     const { mobile_number, password } = req.body;
-    
+
     // Validate required fields
     if (!mobile_number || !password) {
       res.status(400).json({
@@ -24,14 +24,14 @@ export async function login(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
+
     // Find user by mobile number
-    const result = await query(
-      'SELECT id, mobile_number, password_hash, full_name, role, team_id, is_active FROM users WHERE mobile_number = $1',
-      [mobile_number]
-    );
-    
-    if (result.rows.length === 0) {
+    const user = await prisma.user.findUnique({
+      where: { mobile_number },
+      include: { team: true },
+    });
+
+    if (!user) {
       logger.auth('failed_login', undefined, { reason: 'user_not_found', mobile_number });
       res.status(401).json({
         success: false,
@@ -39,9 +39,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
-    const user = result.rows[0];
-    
+
     // Check if user is active
     if (!user.is_active) {
       logger.auth('failed_login', user.id, { reason: 'account_deactivated' });
@@ -51,10 +49,10 @@ export async function login(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!isValidPassword) {
       logger.auth('failed_login', user.id, { reason: 'invalid_password' });
       res.status(401).json({
@@ -63,30 +61,31 @@ export async function login(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
+
+    // Get device info and IP address
+    const device_name = req.body.device_name || 'Unknown Device';
+    const ip_address = req.ip || req.headers['x-forwarded-for']?.toString().split(',')[0] || 'Unknown';
+    const user_agent = req.headers['user-agent'] || null;
+
+    // Record login history
+    await prisma.loginHistory.create({
+      data: {
+        user_id: user.id,
+        device_name,
+        ip_address,
+        user_agent,
+      },
+    });
+
     // Generate JWT token
     const token = generateToken({
       userId: user.id,
       mobile_number: user.mobile_number,
       role: user.role,
     });
-    
-    // Get device info from request
-    const deviceName = req.body.device_name || req.headers['x-device-name'] || 'Unknown Device';
-    const ipAddress = req.headers['x-forwarded-for']?.toString().split(',')[0] || 
-                      req.socket.remoteAddress || 
-                      'Unknown';
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-    
-    // Log login to history
-    await query(
-      `INSERT INTO login_history (user_id, device_name, ip_address, user_agent) 
-       VALUES ($1, $2, $3, $4)`,
-      [user.id, deviceName, ipAddress, userAgent]
-    );
-    
-    logger.auth('login', user.id, { role: user.role, device: deviceName, ip: ipAddress });
-    
+
+    logger.auth('login', user.id, { role: user.role, device_name, ip_address });
+
     // Return token and user info (exclude password_hash)
     res.json({
       success: true,
@@ -98,6 +97,7 @@ export async function login(req: Request, res: Response): Promise<void> {
           full_name: user.full_name,
           role: user.role,
           team_id: user.team_id,
+          team_name: user.team?.name || null,
         },
       },
     });
@@ -111,15 +111,13 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * POST /api/auth/register
- * Register a new user (Admin only)
- * Creates user with hashed password
+ * POST /api/auth/signup
+ * Self-registration for new employees
  */
-export async function register(req: Request, res: Response): Promise<void> {
+export async function signup(req: Request, res: Response): Promise<void> {
   try {
-    const { mobile_number, password, full_name, role, team_id } = req.body;
-    const isAdminCreating = req.user?.role === 'ADMIN';
-    
+    const { mobile_number, password, full_name } = req.body;
+
     // Validate required fields
     if (!mobile_number || !password || !full_name) {
       res.status(400).json({
@@ -128,21 +126,7 @@ export async function register(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
-    // For admin creating users, role can be specified
-    // For self-registration, default to EMPLOYEE
-    const userRole = isAdminCreating && role ? role : 'EMPLOYEE';
-    
-    // Validate role if admin is creating
-    const validRoles = ['ADMIN', 'LEAD', 'EMPLOYEE'];
-    if (!validRoles.includes(userRole)) {
-      res.status(400).json({
-        success: false,
-        error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
-      });
-      return;
-    }
-    
+
     // Validate password strength
     if (password.length < 6) {
       res.status(400).json({
@@ -151,46 +135,140 @@ export async function register(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
+
     // Check if mobile number already exists
-    const existingUser = await query(
-      'SELECT id FROM users WHERE mobile_number = $1',
-      [mobile_number]
-    );
-    
-    if (existingUser.rows.length > 0) {
+    const existingUser = await prisma.user.findUnique({
+      where: { mobile_number },
+    });
+
+    if (existingUser) {
       res.status(409).json({
         success: false,
         error: 'Mobile number already registered',
       });
       return;
     }
-    
+
     // Hash password with bcrypt (10 rounds)
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
-    
-    // Insert new user (only admin can assign team_id)
-    const assignTeamId = isAdminCreating ? (team_id || null) : null;
-    
-    const result = await query(
-      `INSERT INTO users (mobile_number, password_hash, full_name, role, team_id) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING id, mobile_number, full_name, role, team_id, created_at`,
-      [mobile_number, password_hash, full_name, userRole, assignTeamId]
-    );
-    
-    const newUser = result.rows[0];
-    
-    logger.auth('register', newUser.id, { 
-      role: newUser.role, 
-      createdBy: req.user?.userId || 'self-registration'
+
+    // Create new user as EMPLOYEE
+    const newUser = await prisma.user.create({
+      data: {
+        mobile_number,
+        password_hash,
+        full_name,
+        role: 'EMPLOYEE',
+      },
     });
-    
+
+    // Generate token for immediate login
+    const token = generateToken({
+      userId: newUser.id,
+      mobile_number: newUser.mobile_number,
+      role: newUser.role,
+    });
+
+    logger.auth('signup', newUser.id, { role: newUser.role });
+
     res.status(201).json({
       success: true,
       data: {
-        user: newUser,
+        token,
+        user: {
+          id: newUser.id,
+          mobile_number: newUser.mobile_number,
+          full_name: newUser.full_name,
+          role: newUser.role,
+          team_id: newUser.team_id,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Signup error', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Signup failed. Please try again.',
+    });
+  }
+}
+
+/**
+ * POST /api/auth/register
+ * Register a new user (Admin only)
+ * Creates user with hashed password and specified role
+ */
+export async function register(req: Request, res: Response): Promise<void> {
+  try {
+    const { mobile_number, password, full_name, role, team_id } = req.body;
+
+    // Validate required fields
+    if (!mobile_number || !password || !full_name) {
+      res.status(400).json({
+        success: false,
+        error: 'Mobile number, password, and full name are required',
+      });
+      return;
+    }
+
+    // Validate role
+    const validRoles = ['ADMIN', 'LEAD', 'EMPLOYEE'];
+    const userRole = role && validRoles.includes(role) ? role : 'EMPLOYEE';
+
+    // Validate password strength
+    if (password.length < 6) {
+      res.status(400).json({
+        success: false,
+        error: 'Password must be at least 6 characters',
+      });
+      return;
+    }
+
+    // Check if mobile number already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { mobile_number },
+    });
+
+    if (existingUser) {
+      res.status(409).json({
+        success: false,
+        error: 'Mobile number already registered',
+      });
+      return;
+    }
+
+    // Hash password with bcrypt (10 rounds)
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        mobile_number,
+        password_hash,
+        full_name,
+        role: userRole,
+        team_id: team_id || null,
+      },
+    });
+
+    logger.auth('register', newUser.id, {
+      role: newUser.role,
+      createdBy: req.user?.userId || 'admin'
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        user: {
+          id: newUser.id,
+          mobile_number: newUser.mobile_number,
+          full_name: newUser.full_name,
+          role: newUser.role,
+          team_id: newUser.team_id,
+          created_at: newUser.created_at,
+        },
       },
     });
   } catch (error) {
@@ -209,28 +287,32 @@ export async function register(req: Request, res: Response): Promise<void> {
 export async function getProfile(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user?.userId;
-    
-    const result = await query(
-      `SELECT u.id, u.mobile_number, u.full_name, u.role, u.team_id, u.created_at,
-              t.name as team_name
-       FROM users u
-       LEFT JOIN teams t ON u.team_id = t.id
-       WHERE u.id = $1`,
-      [userId]
-    );
-    
-    if (result.rows.length === 0) {
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { team: true },
+    });
+
+    if (!user) {
       res.status(404).json({
         success: false,
         error: 'User not found',
       });
       return;
     }
-    
+
     res.json({
       success: true,
       data: {
-        user: result.rows[0],
+        user: {
+          id: user.id,
+          mobile_number: user.mobile_number,
+          full_name: user.full_name,
+          role: user.role,
+          team_id: user.team_id,
+          team_name: user.team?.name || null,
+          created_at: user.created_at,
+        },
       },
     });
   } catch (error) {
@@ -242,4 +324,55 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
   }
 }
 
-export default { login, register, getProfile };
+/**
+ * GET /api/auth/login-history/:userId
+ * Get login history for a user (Admin only)
+ */
+export async function getLoginHistory(req: Request, res: Response): Promise<void> {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page as string, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get login history with pagination
+    const [history, total] = await Promise.all([
+      prisma.loginHistory.findMany({
+        where: { user_id: userId },
+        orderBy: { logged_in_at: 'desc' },
+        take: limitNum,
+        skip,
+      }),
+      prisma.loginHistory.count({ where: { user_id: userId } }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        login_history: history.map(h => ({
+          id: h.id,
+          device_name: h.device_name,
+          ip_address: h.ip_address,
+          user_agent: h.user_agent,
+          logged_in_at: h.logged_in_at,
+        })),
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Get login history error', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch login history',
+    });
+  }
+}
+
+export default { login, signup, register, getProfile, getLoginHistory };

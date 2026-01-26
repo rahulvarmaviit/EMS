@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/auth_provider.dart';
+import 'core/theme/app_theme.dart';
 import 'features/attendance/attendance_provider.dart';
 import 'features/login/auth_screen.dart';
 import 'features/attendance/employee_home_screen.dart';
@@ -24,14 +25,7 @@ class EmsApp extends StatelessWidget {
       child: MaterialApp(
         title: 'EMS - Geo Attendance',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-          ),
-        ),
+        theme: createAppTheme(),
         home: const AuthWrapper(),
       ),
     );
@@ -49,7 +43,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void initState() {
     super.initState();
-    // Check if user is already logged in
     Future.microtask(() {
       context.read<AuthProvider>().checkAuthStatus();
     });
@@ -60,18 +53,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return Consumer<AuthProvider>(
       builder: (context, auth, child) {
         // Show loading screen while checking auth status
-        if (auth.status == AuthStatus.initial || 
+        if (auth.status == AuthStatus.initial ||
             auth.status == AuthStatus.loading) {
-          return const Scaffold(
+          return Scaffold(
+            backgroundColor: AppColors.background,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.access_time_filled, size: 64, color: Colors.blue),
-                  SizedBox(height: 16),
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading...'),
+                  Icon(Icons.access_time_filled,
+                      size: 64, color: AppColors.primary),
+                  const SizedBox(height: AppSpacing.md),
+                  CircularProgressIndicator(color: AppColors.primary),
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Loading...', style: AppTextStyles.bodyMedium),
                 ],
               ),
             ),
@@ -86,7 +81,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Route based on user role
         final user = auth.user;
         if (user == null) {
-          return const LoginScreen();
+          return const AuthScreen();
         }
 
         switch (user.role) {

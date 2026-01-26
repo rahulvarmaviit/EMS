@@ -4,26 +4,26 @@ import '../../models/attendance.dart';
 
 class AttendanceProvider extends ChangeNotifier {
   final ApiClient _apiClient = ApiClient();
-  
+
   List<Attendance> _history = [];
   Attendance? _todayAttendance;
   bool _isLoading = false;
   String? _error;
-  
+
   List<Attendance> get history => _history;
   Attendance? get todayAttendance => _todayAttendance;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  
+
   bool get isCheckedIn => _todayAttendance != null;
   bool get isCheckedOut => _todayAttendance?.isCheckedOut ?? false;
-  
+
   // Fetch attendance history
   Future<void> fetchHistory() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
+
     try {
       final response = await _apiClient.get('/api/attendance/self');
       if (response['success'] == true) {
@@ -31,10 +31,22 @@ class AttendanceProvider extends ChangeNotifier {
         _history = (data['attendance'] as List)
             .map((json) => Attendance.fromJson(json))
             .toList();
-        
-        // Find today's attendance (safely check if exists)
-        final today = DateTime.now().toIso8601String().split('T')[0];
-        final todayRecords = _history.where((a) => a.date == today);
+
+        // Helper to check if two dates are the same day (ignoring time)
+        bool isSameDay(DateTime date1, DateTime date2) {
+          return date1.year == date2.year &&
+              date1.month == date2.month &&
+              date1.day == date2.day;
+        }
+
+        // Find today's attendance
+        final now = DateTime.now();
+        debugPrint('AttendanceProvider: Today is ${now.toString()}');
+
+        final todayRecords = _history.where((a) => isSameDay(a.date, now));
+
+        debugPrint(
+            'AttendanceProvider: Found ${todayRecords.length} records for today');
         _todayAttendance = todayRecords.isNotEmpty ? todayRecords.first : null;
       }
     } on ApiException catch (e) {
@@ -42,28 +54,28 @@ class AttendanceProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to fetch attendance history';
     }
-    
+
     _isLoading = false;
     notifyListeners();
   }
-  
+
   // Check in with GPS coordinates
   Future<bool> checkIn(double latitude, double longitude) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
+
     try {
       final response = await _apiClient.post('/api/attendance/check-in', {
         'latitude': latitude,
         'longitude': longitude,
       });
-      
+
       if (response['success'] == true) {
         await fetchHistory();
         return true;
       }
-      
+
       _error = response['error'];
       _isLoading = false;
       notifyListeners();
@@ -80,24 +92,24 @@ class AttendanceProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   // Check out with GPS coordinates
   Future<bool> checkOut(double latitude, double longitude) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
+
     try {
       final response = await _apiClient.post('/api/attendance/check-out', {
         'latitude': latitude,
         'longitude': longitude,
       });
-      
+
       if (response['success'] == true) {
         await fetchHistory();
         return true;
       }
-      
+
       _error = response['error'];
       _isLoading = false;
       notifyListeners();
@@ -114,7 +126,7 @@ class AttendanceProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   void clearError() {
     _error = null;
     notifyListeners();

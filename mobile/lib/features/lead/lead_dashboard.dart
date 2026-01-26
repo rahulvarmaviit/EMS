@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/api/api_client.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/components/components.dart';
 import '../../models/attendance.dart';
 import '../../models/user.dart';
 import '../attendance/employee_home_screen.dart';
@@ -14,12 +16,14 @@ class LeadDashboard extends StatefulWidget {
   State<LeadDashboard> createState() => _LeadDashboardState();
 }
 
-class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProviderStateMixin {
+class _LeadDashboardState extends State<LeadDashboard>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ApiClient _apiClient = ApiClient();
   List<Attendance> _teamAttendance = [];
   List<User> _teamMembers = [];
   bool _isLoading = true;
+  String? _error;
   String? _teamId;
 
   @override
@@ -36,15 +40,19 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
   }
 
   Future<void> _loadTeamData() async {
-    setState(() => _isLoading = true);
-    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       // Get team info first
       final teamsResponse = await _apiClient.get('/api/teams');
       if (teamsResponse['success'] == true) {
         final teams = teamsResponse['data']['teams'] as List;
+        if (!mounted) return;
         final user = context.read<AuthProvider>().user;
-        
+
         // Find the team where user is lead
         for (var team in teams) {
           if (team['lead_id'] == user?.id) {
@@ -53,9 +61,9 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
           }
         }
       }
-      
+
       if (_teamId != null) {
-        // Get team members (filter by team_id)
+        // Get team members
         final usersResponse = await _apiClient.get('/api/users');
         if (usersResponse['success'] == true) {
           _teamMembers = (usersResponse['data']['users'] as List)
@@ -63,12 +71,11 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
               .where((user) => user.teamId == _teamId)
               .toList();
         }
-        
+
         // Get today's attendance
         final today = DateTime.now().toIso8601String().split('T')[0];
-        final attendanceResponse = await _apiClient.get(
-          '/api/attendance/team/$_teamId?date=$today'
-        );
+        final attendanceResponse =
+            await _apiClient.get('/api/attendance/team/$_teamId?date=$today');
         if (attendanceResponse['success'] == true) {
           _teamAttendance = (attendanceResponse['data']['attendance'] as List)
               .map((json) => Attendance.fromJson(json))
@@ -76,17 +83,18 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e')),
-        );
-      }
+      _error = 'Failed to load team data';
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
   }
+
+  int get _presentCount =>
+      _teamAttendance.where((a) => a.status == 'PRESENT').length;
+  int get _lateCount => _teamAttendance.where((a) => a.status == 'LATE').length;
+  int get _absentCount => _teamMembers.length - _teamAttendance.length;
 
   @override
   Widget build(BuildContext context) {
@@ -94,17 +102,21 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Team Lead Dashboard'),
+        title: const Text('Team Lead'),
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
           tabs: const [
-            Tab(text: 'Team'),
-            Tab(text: 'My Attendance'),
+            Tab(icon: Icon(Icons.people), text: 'Team'),
+            Tab(icon: Icon(Icons.access_time), text: 'My Attendance'),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () => authProvider.logout(),
           ),
         ],
@@ -121,139 +133,87 @@ class _LeadDashboardState extends State<LeadDashboard> with SingleTickerProvider
 
   Widget _buildTeamView() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingOverlay(message: 'Loading team data...');
+    }
+
+    if (_error != null) {
+      return ErrorState(
+        message: _error!,
+        onRetry: _loadTeamData,
+      );
+    }
+
+    if (_teamId == null) {
+      return const EmptyState(
+        icon: Icons.group_off,
+        title: 'No Team Assigned',
+        subtitle: 'You are not assigned as lead to any team.',
+      );
     }
 
     return RefreshIndicator(
       onRefresh: _loadTeamData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Today's Summary
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Today - ${DateFormat('MMMM d, yyyy').format(DateTime.now())}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildSummaryItem(
-                          'Present',
-                          _teamAttendance.where((a) => a.status == 'PRESENT').length,
-                          Colors.green,
-                        ),
-                        _buildSummaryItem(
-                          'Late',
-                          _teamAttendance.where((a) => a.status == 'LATE').length,
-                          Colors.orange,
-                        ),
-                        _buildSummaryItem(
-                          'Absent',
-                          _teamMembers.length - _teamAttendance.length,
-                          Colors.red,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+            // Date Header
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Text(
+                DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now()),
+                style: AppTextStyles.bodyMedium,
               ),
             ),
-            const SizedBox(height: 24),
+
+            // Stats Summary
+            StatsSummaryCard(
+              presentCount: _presentCount,
+              lateCount: _lateCount,
+              absentCount: _absentCount,
+              totalCount: _teamMembers.length,
+            ),
+            const SizedBox(height: AppSpacing.lg),
 
             // Team Members
-            const Text(
-              'Team Members',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+            SectionHeader(
+              title: 'Team Members (${_teamMembers.length})',
             ),
-            const SizedBox(height: 8),
-            ..._teamMembers.map((member) => _buildMemberCard(member)),
+            const SizedBox(height: AppSpacing.sm),
+
+            if (_teamMembers.isEmpty)
+              const EmptyState(
+                icon: Icons.person_off,
+                title: 'No team members',
+                subtitle: 'Ask admin to assign employees to your team.',
+              )
+            else
+              ...List.generate(_teamMembers.length, (index) {
+                final member = _teamMembers[index];
+                final attendance = _teamAttendance.firstWhere(
+                  (a) => a.userId == member.id,
+                  orElse: () => Attendance.empty(),
+                );
+
+                final isPresent = attendance.id.isNotEmpty;
+                final isLate = attendance.status == 'LATE';
+                final checkInTime = isPresent
+                    ? DateFormat('h:mm a').format(attendance.checkInTime)
+                    : null;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: TeamMemberTile(
+                    user: member,
+                    isPresent: isPresent,
+                    isLate: isLate,
+                    checkInTime: checkInTime,
+                  ),
+                );
+              }),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String label, int count, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              count.toString(),
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: TextStyle(color: color)),
-      ],
-    );
-  }
-
-  Widget _buildMemberCard(User member) {
-    // Safely find attendance record for this member
-    final attendanceRecords = _teamAttendance.where(
-      (a) => a.userName == member.fullName,
-    );
-    final attendance = attendanceRecords.isNotEmpty ? attendanceRecords.first : null;
-    
-    final isPresent = attendance != null;
-    final status = attendance?.status ?? 'ABSENT';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: isPresent
-              ? (status == 'PRESENT' ? Colors.green : Colors.orange)
-              : Colors.red,
-          child: Text(
-            member.fullName.substring(0, 1).toUpperCase(),
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        title: Text(member.fullName),
-        subtitle: isPresent
-            ? Text('In: ${DateFormat('h:mm a').format(attendance!.checkInTime)}')
-            : const Text('Not checked in'),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: isPresent
-                ? (status == 'PRESENT' ? Colors.green : Colors.orange)
-                : Colors.red,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            isPresent ? (status == 'PRESENT' ? 'Present' : 'Late') : 'Absent',
-            style: const TextStyle(color: Colors.white, fontSize: 12),
-          ),
         ),
       ),
     );

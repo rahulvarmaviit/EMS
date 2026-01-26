@@ -6,7 +6,8 @@ class LocationManagementScreen extends StatefulWidget {
   const LocationManagementScreen({super.key});
 
   @override
-  State<LocationManagementScreen> createState() => _LocationManagementScreenState();
+  State<LocationManagementScreen> createState() =>
+      _LocationManagementScreenState();
 }
 
 class _LocationManagementScreenState extends State<LocationManagementScreen> {
@@ -22,7 +23,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
 
   Future<void> _loadLocations() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final response = await _apiClient.get('/api/locations');
       if (response['success'] == true) {
@@ -37,7 +38,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
         );
       }
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -68,7 +69,8 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: latController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Latitude',
                   hintText: 'e.g., 37.7749',
@@ -78,7 +80,8 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: longController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Longitude',
                   hintText: 'e.g., -122.4194',
@@ -126,6 +129,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                   'longitude': double.parse(longController.text),
                   'radius_meters': int.parse(radiusController.text),
                 });
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 _loadLocations();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +139,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                   ),
                 );
               } catch (e) {
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Error: $e')),
                 );
@@ -170,6 +175,7 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
     if (confirmed == true) {
       try {
         await _apiClient.delete('/api/locations/${location.id}');
+        if (!context.mounted) return;
         _loadLocations();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -243,7 +249,8 @@ class _LocationManagementScreenState extends State<LocationManagementScreen> {
                             ),
                             title: Text(
                               location.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

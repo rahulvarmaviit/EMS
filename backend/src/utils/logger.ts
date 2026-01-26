@@ -82,7 +82,7 @@ export const logger = {
   /**
    * Log authentication events
    */
-  auth(event: 'login' | 'logout' | 'register' | 'failed_login', userId?: string, details?: Record<string, any>): void {
+  auth(event: 'login' | 'logout' | 'register' | 'signup' | 'failed_login', userId?: string, details?: Record<string, any>): void {
     this.info(`Auth: ${event}`, {
       event,
       ...(userId && { userId }),

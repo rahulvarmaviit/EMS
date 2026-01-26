@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
-import 'dart:io';
 import '../../core/auth/auth_provider.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/components/glass_components.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -10,21 +12,22 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+class _AuthScreenState extends State<AuthScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Login form
   final _loginFormKey = GlobalKey<FormState>();
   final _loginMobileController = TextEditingController();
   final _loginPasswordController = TextEditingController();
-  
+
   // Signup form
   final _signupFormKey = GlobalKey<FormState>();
   final _signupNameController = TextEditingController();
   final _signupMobileController = TextEditingController();
   final _signupPasswordController = TextEditingController();
   final _signupConfirmPasswordController = TextEditingController();
-  
+
   bool _obscureLoginPassword = true;
   bool _obscureSignupPassword = true;
   bool _obscureConfirmPassword = true;
@@ -48,16 +51,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   String _getDeviceName() {
-    try {
-      if (Platform.isAndroid) {
-        return 'Android Device';
-      } else if (Platform.isIOS) {
-        return 'iOS Device';
-      }
-      return 'Mobile Device';
-    } catch (e) {
-      return 'Unknown Device';
-    }
+    if (kIsWeb) return 'Web Browser';
+    return 'Mobile Device';
   }
 
   Future<void> _handleLogin() async {
@@ -65,7 +60,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     final authProvider = context.read<AuthProvider>();
     final deviceName = _getDeviceName();
-    
+
     final success = await authProvider.login(
       _loginMobileController.text.trim(),
       _loginPasswordController.text,
@@ -76,7 +71,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Login failed'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -85,11 +80,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   Future<void> _handleSignup() async {
     if (!_signupFormKey.currentState!.validate()) return;
 
-    if (_signupPasswordController.text != _signupConfirmPasswordController.text) {
+    if (_signupPasswordController.text !=
+        _signupConfirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Passwords do not match'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -97,7 +93,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     final authProvider = context.read<AuthProvider>();
     final deviceName = _getDeviceName();
-    
+
     final success = await authProvider.signup(
       fullName: _signupNameController.text.trim(),
       mobileNumber: _signupMobileController.text.trim(),
@@ -110,14 +106,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account created successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(authProvider.error ?? 'Signup failed'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -127,292 +123,294 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            
-            // App Logo/Title
-            const Icon(
-              Icons.access_time_filled,
-              size: 64,
-              color: Colors.blue,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'EMS',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const Text(
-              'Geo-Attendance System',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Tab Bar
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Login'),
-                Tab(text: 'Sign Up'),
-              ],
-            ),
-            
-            // Tab Content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildLoginTab(),
-                  _buildSignupTab(),
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF2E003E),
+                  Colors.black,
+                  Color(0xFF1A1A00),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Background Circles
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withOpacity(0.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.4),
+                    blurRadius: 100,
+                    spreadRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            left: -50,
+            child: Container(
+              width: 250,
+              height: 250,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.secondary.withOpacity(0.1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.secondary.withOpacity(0.2),
+                    blurRadius: 80,
+                    spreadRadius: 10,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: AppSpacing.xl),
+
+                // Logo/Title
+                const Icon(
+                  Icons.access_time_filled,
+                  size: 80,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'AKH',
+                  style: AppTextStyles.displayLarge.copyWith(
+                    color: AppColors.secondary,
+                  ),
+                ),
+                Text(
+                  'Geo-Attendance System',
+                  style: AppTextStyles.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                // Tab Bar
+                GlassContainer(
+                  padding: const EdgeInsets.all(4),
+                  margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(text: 'Login'),
+                      Tab(text: 'Sign Up'),
+                    ],
+                  ),
+                ),
+
+                // Tab Content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildLoginTab(),
+                      _buildSignupTab(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildLoginTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _loginFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 24),
-            
-            // Mobile Number Field
-            TextFormField(
-              controller: _loginMobileController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Mobile Number',
-                hintText: '+1234567890',
-                prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your mobile number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+    final isLoading =
+        context.watch<AuthProvider>().status == AuthStatus.loading;
 
-            // Password Field
-            TextFormField(
-              controller: _loginPasswordController,
-              obscureText: _obscureLoginPassword,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock),
-                border: const OutlineInputBorder(),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: GlassContainer(
+        child: Form(
+          key: _loginFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _loginMobileController,
+                label: 'Mobile Number',
+                hint: '+1234567890',
+                prefixIcon: Icons.phone,
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your mobile number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _loginPasswordController,
+                label: 'Password',
+                prefixIcon: Icons.lock,
+                obscureText: _obscureLoginPassword,
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureLoginPassword
                         ? Icons.visibility_off
                         : Icons.visibility,
+                    color: AppColors.textSecondary,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureLoginPassword = !_obscureLoginPassword;
-                    });
-                  },
+                  onPressed: () => setState(
+                      () => _obscureLoginPassword = !_obscureLoginPassword),
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your password';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your password';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Login Button
-            Consumer<AuthProvider>(
-              builder: (context, auth, child) {
-                final isLoading = auth.status == AuthStatus.loading;
-                return ElevatedButton(
-                  onPressed: isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Login', style: TextStyle(fontSize: 16)),
-                );
-              },
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xl),
+              GlassButton(
+                text: 'Login',
+                icon: Icons.login,
+                isLoading: isLoading,
+                onPressed: _handleLogin,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSignupTab() {
+    final isLoading =
+        context.watch<AuthProvider>().status == AuthStatus.loading;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _signupFormKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 16),
-            
-            // Full Name Field
-            TextFormField(
-              controller: _signupNameController,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Full Name',
-                hintText: 'John Doe',
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: GlassContainer(
+        child: Form(
+          key: _signupFormKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _signupNameController,
+                label: 'Full Name',
+                hint: 'John Doe',
+                prefixIcon: Icons.person,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your full name';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your full name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Mobile Number Field
-            TextFormField(
-              controller: _signupMobileController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Mobile Number',
-                hintText: '+1234567890',
-                prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(),
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _signupMobileController,
+                label: 'Mobile Number',
+                hint: '+1234567890',
+                prefixIcon: Icons.phone,
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your mobile number';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your mobile number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Password Field
-            TextFormField(
-              controller: _signupPasswordController,
-              obscureText: _obscureSignupPassword,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock),
-                border: const OutlineInputBorder(),
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _signupPasswordController,
+                label: 'Password',
+                prefixIcon: Icons.lock,
+                obscureText: _obscureSignupPassword,
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureSignupPassword
                         ? Icons.visibility_off
                         : Icons.visibility,
+                    color: AppColors.textSecondary,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureSignupPassword = !_obscureSignupPassword;
-                    });
-                  },
+                  onPressed: () => setState(
+                      () => _obscureSignupPassword = !_obscureSignupPassword),
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
+                },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a password';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Confirm Password Field
-            TextFormField(
-              controller: _signupConfirmPasswordController,
-              obscureText: _obscureConfirmPassword,
-              decoration: InputDecoration(
-                labelText: 'Confirm Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: const OutlineInputBorder(),
+              const SizedBox(height: AppSpacing.md),
+              GlassTextField(
+                controller: _signupConfirmPasswordController,
+                label: 'Confirm Password',
+                prefixIcon: Icons.lock_outline,
+                obscureText: _obscureConfirmPassword,
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureConfirmPassword
                         ? Icons.visibility_off
                         : Icons.visibility,
+                    color: AppColors.textSecondary,
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureConfirmPassword = !_obscureConfirmPassword;
-                    });
-                  },
+                  onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your password';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              GlassButton(
+                text: 'Create Account',
+                icon: Icons.person_add,
+                isLoading: isLoading,
+                onPressed: _handleSignup,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'By signing up, you will be registered as an Employee.\nContact Admin to be assigned to a team.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textTertiary,
+                  fontSize: 12,
                 ),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please confirm your password';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Signup Button
-            Consumer<AuthProvider>(
-              builder: (context, auth, child) {
-                final isLoading = auth.status == AuthStatus.loading;
-                return ElevatedButton(
-                  onPressed: isLoading ? null : _handleSignup,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Create Account', style: TextStyle(fontSize: 16)),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 16),
-            const Text(
-              'By signing up, you will be registered as an Employee.\nContact Admin to be assigned to a team.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

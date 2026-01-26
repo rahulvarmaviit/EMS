@@ -27,17 +27,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final teamsResponse = await _apiClient.get('/api/teams');
       final usersResponse = await _apiClient.get('/api/users');
-      
+
       if (teamsResponse['success'] == true) {
         _teams = (teamsResponse['data']['teams'] as List)
             .map((json) => Team.fromJson(json))
             .toList();
       }
-      
+
       if (usersResponse['success'] == true) {
         _users = (usersResponse['data']['users'] as List)
             .map((json) => User.fromJson(json))
@@ -50,7 +50,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
       }
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -70,7 +70,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const LocationManagementScreen()),
+                MaterialPageRoute(
+                    builder: (_) => const LocationManagementScreen()),
               );
             },
           ),
@@ -126,7 +127,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.blue),
+                          icon:
+                              const Icon(Icons.add_circle, color: Colors.blue),
                           onPressed: () => _showCreateTeamDialog(),
                         ),
                       ],
@@ -147,7 +149,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.person_add, color: Colors.blue),
+                          icon:
+                              const Icon(Icons.person_add, color: Colors.blue),
                           onPressed: () => _showCreateUserDialog(),
                         ),
                       ],
@@ -160,7 +163,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -192,8 +196,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           child: Icon(Icons.groups, color: Colors.white),
         ),
         title: Text(team.name),
-        subtitle: Text(team.leadName != null 
-            ? 'Lead: ${team.leadName}' 
+        subtitle: Text(team.leadName != null
+            ? 'Lead: ${team.leadName}'
             : 'No lead assigned'),
         trailing: Text('${team.memberCount ?? 0} members'),
       ),
@@ -212,8 +216,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ? Colors.orange
                   : Colors.green,
           child: Text(
-            user.fullName.isNotEmpty 
-                ? user.fullName.substring(0, 1).toUpperCase() 
+            user.fullName.isNotEmpty
+                ? user.fullName.substring(0, 1).toUpperCase()
                 : 'U',
             style: const TextStyle(color: Colors.white),
           ),
@@ -248,7 +252,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   style: const TextStyle(color: Colors.grey),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Team Assignment
                 DropdownButtonFormField<String?>(
                   value: selectedTeamId,
@@ -262,9 +266,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       child: Text('No Team'),
                     ),
                     ..._teams.map((team) => DropdownMenuItem(
-                      value: team.id,
-                      child: Text(team.name),
-                    )),
+                          value: team.id,
+                          child: Text(team.name),
+                        )),
                   ],
                   onChanged: (value) {
                     setState(() {
@@ -274,7 +278,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Make Team Lead checkbox (only show if team is selected and not admin)
                 if (selectedTeamId != null && !user.isAdmin)
                   CheckboxListTile(
@@ -300,6 +304,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     'team_id': selectedTeamId,
                     'is_lead': makeLead,
                   });
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadData();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -309,6 +314,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   );
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: $e')),
                   );
@@ -324,7 +330,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _showCreateTeamDialog() {
     final nameController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -348,9 +354,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   await _apiClient.post('/api/teams', {
                     'name': nameController.text,
                   });
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   _loadData();
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: $e')),
                   );
@@ -412,7 +420,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'EMPLOYEE', child: Text('Employee')),
+                    DropdownMenuItem(
+                        value: 'EMPLOYEE', child: Text('Employee')),
                     DropdownMenuItem(value: 'LEAD', child: Text('Team Lead')),
                     DropdownMenuItem(value: 'ADMIN', child: Text('Admin')),
                   ],
@@ -440,9 +449,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       'password': passwordController.text,
                       'role': selectedRole,
                     });
+                    if (!context.mounted) return;
                     Navigator.pop(context);
                     _loadData();
                   } catch (e) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Error: $e')),
                     );

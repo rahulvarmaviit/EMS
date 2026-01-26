@@ -25,7 +25,8 @@ model User {
   mobile_number String   @unique
   password_hash String
   full_name     String
-  role          Role
+  role          Role     @default(EMPLOYEE)
+  is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
   
   // Relationships
@@ -35,8 +36,24 @@ model User {
   managed_team  Team?    @relation("TeamLead")
   
   attendance    Attendance[]
+  login_history LoginHistory[]
 
   @@map("users")
+}
+
+model LoginHistory {
+  id            String   @id @default(uuid())
+  device_name   String?
+  ip_address    String?
+  user_agent    String?
+  logged_in_at  DateTime @default(now())
+  
+  // Relationships
+  user_id       String
+  user          User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@map("login_history")
 }
 
 model Team {

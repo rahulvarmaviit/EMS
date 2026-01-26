@@ -1,9 +1,10 @@
 // User Controller
-// Purpose: User management operations (Admin/Lead access)
+// Purpose: User management operations (Admin/Lead access) using Prisma
 
 import { Request, Response } from 'express';
-import { query } from '../config/database';
+import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
+import { Role } from '@prisma/client';
 
 /**
  * GET /api/users
@@ -14,33 +15,21 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     const userRole = req.user?.role;
     const userId = req.user?.userId;
     const { page = 1, limit = 50, team_id, role } = req.query;
-    
+
     const pageNum = Math.max(1, parseInt(page as string, 10));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10)));
-    const offset = (pageNum - 1) * limitNum;
-    
-    let queryText = `
-      SELECT u.id, u.mobile_number, u.full_name, u.role, u.team_id, u.is_active, u.created_at,
-             t.name as team_name
-      FROM users u
-      LEFT JOIN teams t ON u.team_id = t.id
-      WHERE u.is_active = true
-    `;
-    const queryParams: any[] = [];
-    let paramIndex = 1;
-    
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build where clause
+    const whereClause: any = { is_active: true };
+
     // Lead can only see their team members
     if (userRole === 'LEAD') {
-      const teamResult = await query(
-        'SELECT id FROM teams WHERE lead_id = $1',
-        [userId]
-      );
-      
-      if (teamResult.rows.length > 0) {
-        queryText += ` AND u.team_id = $${paramIndex}`;
-        queryParams.push(teamResult.rows[0].id);
-        paramIndex++;
-      } else {
+      const leadTeam = await prisma.team.findFirst({
+        where: { lead_id: userId },
+      });
+
+      if (!leadTeam) {
         // Lead without a team sees no one
         res.json({
           success: true,
@@ -51,65 +40,47 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
         });
         return;
       }
-    } else {
+
+      whereClause.team_id = leadTeam.id;
+    } else if (team_id) {
       // Admin can filter by team_id
-      if (team_id) {
-        queryText += ` AND u.team_id = $${paramIndex}`;
-        queryParams.push(team_id);
-        paramIndex++;
-      }
+      whereClause.team_id = team_id as string;
     }
-    
+
     // Filter by role
     if (role) {
-      queryText += ` AND u.role = $${paramIndex}`;
-      queryParams.push(role);
-      paramIndex++;
+      whereClause.role = role as Role;
     }
-    
-    // Build separate count query with proper parameters
-    let countQueryText = `
-      SELECT COUNT(*) 
-      FROM users u
-      LEFT JOIN teams t ON u.team_id = t.id
-      WHERE u.is_active = true
-    `;
-    const countParams: any[] = [];
-    let countParamIndex = 1;
-    
-    // Apply same filters for count
-    if (userRole === 'LEAD') {
-      const teamResult = await query('SELECT id FROM teams WHERE lead_id = $1', [userId]);
-      if (teamResult.rows.length > 0) {
-        countQueryText += ` AND u.team_id = $${countParamIndex}`;
-        countParams.push(teamResult.rows[0].id);
-        countParamIndex++;
-      }
-    } else if (team_id) {
-      countQueryText += ` AND u.team_id = $${countParamIndex}`;
-      countParams.push(team_id);
-      countParamIndex++;
-    }
-    
-    if (role) {
-      countQueryText += ` AND u.role = $${countParamIndex}`;
-      countParams.push(role);
-    }
-    
-    // Add ordering and pagination to main query
-    queryText += ` ORDER BY u.full_name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    queryParams.push(limitNum, offset);
-    
-    const result = await query(queryText, queryParams);
-    
-    // Get count with proper separate query
-    const countResult = await query(countQueryText, countParams);
-    const total = parseInt(countResult.rows[0].count, 10);
-    
+
+    // Get users with pagination
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: whereClause,
+        include: {
+          team: {
+            select: { name: true },
+          },
+        },
+        orderBy: { full_name: 'asc' },
+        take: limitNum,
+        skip,
+      }),
+      prisma.user.count({ where: whereClause }),
+    ]);
+
     res.json({
       success: true,
       data: {
-        users: result.rows,
+        users: users.map(u => ({
+          id: u.id,
+          mobile_number: u.mobile_number,
+          full_name: u.full_name,
+          role: u.role,
+          team_id: u.team_id,
+          team_name: u.team?.name || null,
+          is_active: u.is_active,
+          created_at: u.created_at,
+        })),
         pagination: {
           page: pageNum,
           limit: limitNum,
@@ -134,30 +105,42 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 export async function getUser(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    
-    const result = await query(
-      `SELECT u.id, u.mobile_number, u.full_name, u.role, u.team_id, u.is_active, u.created_at,
-              t.name as team_name,
-              lead.full_name as team_lead_name
-       FROM users u
-       LEFT JOIN teams t ON u.team_id = t.id
-       LEFT JOIN users lead ON t.lead_id = lead.id
-       WHERE u.id = $1`,
-      [id]
-    );
-    
-    if (result.rows.length === 0) {
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        team: {
+          include: {
+            lead: {
+              select: { full_name: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
       res.status(404).json({
         success: false,
         error: 'User not found',
       });
       return;
     }
-    
+
     res.json({
       success: true,
       data: {
-        user: result.rows[0],
+        user: {
+          id: user.id,
+          mobile_number: user.mobile_number,
+          full_name: user.full_name,
+          role: user.role,
+          team_id: user.team_id,
+          team_name: user.team?.name || null,
+          team_lead_name: user.team?.lead?.full_name || null,
+          is_active: user.is_active,
+          created_at: user.created_at,
+        },
       },
     });
   } catch (error) {
@@ -177,29 +160,27 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
     const { team_id, is_lead } = req.body;
-    
+
     // Verify user exists
-    const userResult = await query(
-      'SELECT id, role FROM users WHERE id = $1',
-      [id]
-    );
-    
-    if (userResult.rows.length === 0) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
       res.status(404).json({
         success: false,
         error: 'User not found',
       });
       return;
     }
-    
+
     // Verify team exists (if assigning to a team)
     if (team_id) {
-      const teamResult = await query(
-        'SELECT id FROM teams WHERE id = $1',
-        [team_id]
-      );
-      
-      if (teamResult.rows.length === 0) {
+      const team = await prisma.team.findUnique({
+        where: { id: team_id },
+      });
+
+      if (!team) {
         res.status(404).json({
           success: false,
           error: 'Team not found',
@@ -207,40 +188,51 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
         return;
       }
     }
-    
+
     // Update user's team
-    await query(
-      'UPDATE users SET team_id = $1 WHERE id = $2',
-      [team_id || null, id]
-    );
-    
+    await prisma.user.update({
+      where: { id },
+      data: { team_id: team_id || null },
+    });
+
     // If making user a lead, update team's lead_id and user's role
     if (is_lead && team_id) {
-      await query('UPDATE teams SET lead_id = $1 WHERE id = $2', [id, team_id]);
-      await query('UPDATE users SET role = $1 WHERE id = $2', ['LEAD', id]);
+      await prisma.team.update({
+        where: { id: team_id },
+        data: { lead_id: id },
+      });
+      await prisma.user.update({
+        where: { id },
+        data: { role: 'LEAD' },
+      });
     }
-    
+
     // Fetch updated user
-    const result = await query(
-      `SELECT u.id, u.full_name, u.role, u.team_id, t.name as team_name
-       FROM users u
-       LEFT JOIN teams t ON u.team_id = t.id
-       WHERE u.id = $1`,
-      [id]
-    );
-    
+    const updatedUser = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        team: { select: { name: true } },
+      },
+    });
+
     logger.info('User team assignment', {
       userId: id,
       teamId: team_id,
       isLead: is_lead,
       assignedBy: req.user?.userId,
     });
-    
+
     res.json({
       success: true,
       message: 'Team assignment updated',
       data: {
-        user: result.rows[0],
+        user: {
+          id: updatedUser!.id,
+          full_name: updatedUser!.full_name,
+          role: updatedUser!.role,
+          team_id: updatedUser!.team_id,
+          team_name: updatedUser!.team?.name || null,
+        },
       },
     });
   } catch (error) {
@@ -259,7 +251,7 @@ export async function assignTeam(req: Request, res: Response): Promise<void> {
 export async function deleteUser(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    
+
     // Don't allow deleting yourself
     if (id === req.user?.userId) {
       res.status(400).json({
@@ -268,26 +260,26 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
       });
       return;
     }
-    
+
     // Soft delete - set is_active to false
-    const result = await query(
-      'UPDATE users SET is_active = false WHERE id = $1 RETURNING id, full_name',
-      [id]
-    );
-    
-    if (result.rows.length === 0) {
+    try {
+      await prisma.user.update({
+        where: { id },
+        data: { is_active: false },
+      });
+    } catch (e) {
       res.status(404).json({
         success: false,
         error: 'User not found',
       });
       return;
     }
-    
+
     logger.info('User deleted', {
       userId: id,
       deletedBy: req.user?.userId,
     });
-    
+
     res.json({
       success: true,
       message: 'User deactivated successfully',

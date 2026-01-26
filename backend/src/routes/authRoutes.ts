@@ -2,7 +2,7 @@
 // Purpose: Login, registration, and profile endpoints
 
 import { Router } from 'express';
-import { login, register, getProfile } from '../controllers/authController';
+import { login, signup, register, getProfile, getLoginHistory } from '../controllers/authController';
 import { authenticate, optionalAuthenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -10,13 +10,16 @@ const router = Router();
 // Public routes (no auth required)
 router.post('/login', login);
 
-// Self-registration for employees (optional auth to allow admin override)
-router.post('/signup', optionalAuthenticate, register);
+// Self-registration for employees (public)
+router.post('/signup', signup);
 
 // Protected routes
 router.get('/me', authenticate, getProfile);
 
 // Admin only - register new users with role assignment
 router.post('/register', authenticate, authorize('ADMIN'), register);
+
+// Admin only - view login history for a user
+router.get('/login-history/:userId', authenticate, authorize('ADMIN'), getLoginHistory);
 
 export default router;
