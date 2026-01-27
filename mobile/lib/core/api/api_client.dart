@@ -14,8 +14,8 @@ class ApiClient {
     }
     // For Android emulator, 10.0.2.2 maps to host's localhost
     // For physical device, use your computer's local IP
-    // Currently detected as: 192.168.1.5
-    return 'http://192.168.1.5:5000';
+    // Production Server IP
+    return 'http://49.206.202.13';
   }
 
   // Get stored token
