@@ -4,13 +4,32 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+import readline from 'readline';
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+const question = (query: string): Promise<string> => {
+    return new Promise((resolve) => {
+        rl.question(query, resolve);
+    });
+};
+
 async function main() {
-    const mobileNumber = '7989498358';
-    const password = 'admin123';
-    const fullName = 'Admin User';
+    console.log('--- Create Admin User ---');
+
+    // Get interactive input
+    const mobileNumber = await question('Enter Mobile Number (default: 7989498358): ') || '7989498358';
+    const fullName = await question('Enter Full Name (default: Admin User): ') || 'Admin User';
+    const password = await question('Enter Password (default: admin123): ') || 'admin123';
+
+    rl.close();
+
     const role = 'ADMIN';
 
-    console.log(`Checking for user: ${mobileNumber}...`);
+    console.log(`\nChecking for user: ${mobileNumber}...`);
 
     const existingUser = await prisma.user.findUnique({
         where: { mobile_number: mobileNumber },
@@ -27,9 +46,10 @@ async function main() {
                 password_hash: passwordHash,
                 role: role,
                 is_active: true,
+                full_name: fullName, // Update name too
             },
         });
-        console.log('User updated successfully.');
+        console.log('✅ Admin updated successfully.');
     } else {
         console.log('User not found. Creating new admin user...');
         await prisma.user.create({
@@ -41,7 +61,7 @@ async function main() {
                 is_active: true,
             },
         });
-        console.log('User created successfully.');
+        console.log('✅ Admin created successfully.');
     }
 }
 
