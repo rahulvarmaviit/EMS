@@ -1,6 +1,9 @@
-import 'dart:convert';
+import 'dart:io';
+import 'dart:convert'; // Restored
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; // Add this
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart'; // Add this
 import '../api/api_client.dart';
 import '../../models/user.dart';
 
@@ -60,6 +63,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Get unique device ID
+  Future<String?> _getDeviceId() async {
+    final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    try {
+      if (kIsWeb) {
+        return 'web_browser_session'; // Web doesn't have a stable hardware ID
+      } else if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.id; // Unique ID on Android
+      } else if (Platform.isIOS) {
+        final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.identifierForVendor; // Unique ID on iOS
+      }
+    } catch (e) {
+      // Ignore error
+    }
+    return null;
+  }
+
   // Login with mobile number and password
   Future<bool> login(String mobileNumber, String password,
       {String? deviceName}) async {
@@ -68,10 +90,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final deviceId = await _getDeviceId();
+
       final response = await _apiClient.post('/api/auth/login', {
         'mobile_number': mobileNumber,
         'password': password,
         'device_name': deviceName ?? 'Unknown Device',
+        'device_id': deviceId, // Send Device ID
       });
 
       if (response['success'] == true) {
@@ -140,10 +165,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final deviceId = await _getDeviceId();
+
       final response = await _apiClient.post('/api/auth/signup', {
         'full_name': fullName,
         'mobile_number': mobileNumber,
         'password': password,
+        'device_id': deviceId, // Send Device ID
       });
 
       if (response['success'] == true) {

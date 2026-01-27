@@ -7,14 +7,13 @@ import '../../core/theme/app_theme.dart';
 import '../../core/components/glass_components.dart';
 import '../profile/profile_screen.dart';
 import 'attendance_provider.dart';
-import 'attendance_screen.dart';
-import '../leave/leave_screen.dart';
+
 import 'widgets/daily_work_log_dialog.dart';
-import '../todo/todo_screen.dart';
-import '../documents/documents_screen.dart';
+import '../shared/app_drawer.dart';
 
 class EmployeeHomeScreen extends StatefulWidget {
-  const EmployeeHomeScreen({super.key});
+  final bool isEmbedded;
+  const EmployeeHomeScreen({super.key, this.isEmbedded = false});
 
   @override
   State<EmployeeHomeScreen> createState() => _EmployeeHomeScreenState();
@@ -287,149 +286,90 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
     );
   }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white70),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-        ),
-      ),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      horizontalTitleGap: 0,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final attendanceProvider = context.watch<AttendanceProvider>();
     final user = authProvider.user;
 
-    return Scaffold(
-      endDrawer: Drawer(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF2E003E),
-                Colors.black,
-              ],
+    Widget content = RefreshIndicator(
+      onRefresh: _loadAttendance,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Welcome Header
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome back, ${user?.fullName ?? "User"}!',
+                    style: AppTextStyles.displaySmall
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  const Text(
+                    "Here's what's happening with your work today.",
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                ],
+              ),
             ),
-          ),
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        (user?.fullName.isNotEmpty == true)
-                            ? user!.fullName.substring(0, 1).toUpperCase()
-                            : 'A',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+
+            // Actions
+            if (_locationError != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: GlassContainer(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderColor: AppColors.error.withOpacity(0.3),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: AppColors.error),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          _locationError!,
+                          style: const TextStyle(color: AppColors.error),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'AKH Dashboard',
-                      style: AppTextStyles.titleLarge
-                          .copyWith(color: Colors.white),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              _buildDrawerItem(
-                icon: Icons.dashboard,
-                title: 'Dashboard',
-                onTap: () {
-                  Navigator.pop(context); // Already on Dashboard
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.check_circle_outline,
-                title: 'Attendance',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AttendanceScreen()),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.calendar_today,
-                title: 'Leave',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LeaveScreen()),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.checklist,
-                title: "To Do's",
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TodoScreen()),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.folder,
-                title: 'Documents',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const DocumentsScreen()),
-                  );
-                },
-              ),
-            ],
-          ),
+
+            // Main Layout
+            // On Mobile, we stack them.
+            _buildAttendanceCard(attendanceProvider),
+            const SizedBox(height: AppSpacing.lg),
+            _buildUpcomingEventsCard(),
+          ],
         ),
       ),
+    );
+
+    if (widget.isEmbedded) {
+      return content;
+    }
+
+    return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('AKH Dashboard'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false, // Don't show default drawer icon
-        leading: IconButton(
-          icon: const Icon(Icons.person),
-          tooltip: 'Profile',
-          onPressed: _navigateToProfile,
-        ),
-        // Ensure endDrawer icon is shown (AppBar handles this automatically if actions are not empty or if we don't suppress it)
-        // But we want ONLY the endDrawer icon in actions.
+        automaticallyImplyLeading: true, // Show default drawer icon
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+            onPressed: _navigateToProfile,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -450,68 +390,7 @@ class _EmployeeHomeScreenState extends State<EmployeeHomeScreen> {
 
           // Content
           SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _loadAttendance,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Welcome Header
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome back, ${user?.fullName ?? "User"}!',
-                            style: AppTextStyles.displaySmall
-                                .copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          const Text(
-                            "Here's what's happening with your work today.",
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Actions
-                    if (_locationError != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: GlassContainer(
-                          color: AppColors.error.withOpacity(0.1),
-                          borderColor: AppColors.error.withOpacity(0.3),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  color: AppColors.error),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Text(
-                                  _locationError!,
-                                  style:
-                                      const TextStyle(color: AppColors.error),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // Main Layout
-                    // On Mobile, we stack them.
-                    _buildAttendanceCard(attendanceProvider),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildUpcomingEventsCard(),
-                  ],
-                ),
-              ),
-            ),
+            child: content,
           ),
         ],
       ),

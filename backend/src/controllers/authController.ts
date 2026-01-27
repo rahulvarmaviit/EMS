@@ -64,8 +64,33 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     // Get device info and IP address
     const device_name = req.body.device_name || 'Unknown Device';
+    const device_id = req.body.device_id; // Unique Device ID from App
     const ip_address = req.ip || req.headers['x-forwarded-for']?.toString().split(',')[0] || 'Unknown';
     const user_agent = req.headers['user-agent'] || null;
+
+    // DEVICE BINDING LOGIC
+    if (device_id) {
+      if (!user.device_id) {
+        // First time login with a device (or legacy user), bind account to this device
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { device_id },
+        });
+        logger.auth('device_bind', user.id, { device_id, device_name });
+      } else if (user.device_id !== device_id) {
+        // Mismatch - Block Login
+        logger.auth('failed_login', user.id, { reason: 'device_mismatch', stored: user.device_id, attempt: device_id });
+        res.status(403).json({
+          success: false,
+          error: 'This account is bound to another device. Please login from your registered device.',
+        });
+        return;
+      }
+    } else {
+      // Optional: Enforce device_id presence for mobile app users
+      // For now, we allow login without device_id (e.g. web/admin) but log a warning?
+      // Or just ignore if not provided (e.g. initial rollout)
+    }
 
     // Record login history
     await prisma.loginHistory.create({
@@ -162,6 +187,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
         password_hash,
         full_name,
         role: 'EMPLOYEE',
+        device_id: req.body.device_id || null, // Bind immediately on signup
       },
     });
 

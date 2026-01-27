@@ -23,6 +23,7 @@ model User {
   documents     Document[]
   managed_team  Team?          @relation("TeamLead")
   team          Team?          @relation("TeamMembers", fields: [team_id], references: [id])
+  device_id     String?        // For Device Binding
 
   @@map("users")
 }

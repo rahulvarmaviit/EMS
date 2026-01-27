@@ -8,6 +8,9 @@ import '../../core/components/components.dart';
 import '../../models/attendance.dart';
 import '../../models/user.dart';
 import '../attendance/employee_home_screen.dart';
+import '../profile/profile_screen.dart';
+import '../shared/app_drawer.dart';
+import '../admin/user_details_screen.dart';
 
 class LeadDashboard extends StatefulWidget {
   const LeadDashboard({super.key});
@@ -66,9 +69,12 @@ class _LeadDashboardState extends State<LeadDashboard>
         // Get team members
         final usersResponse = await _apiClient.get('/api/users');
         if (usersResponse['success'] == true) {
+          if (!mounted) return;
+          final currentUser = context.read<AuthProvider>().user;
           _teamMembers = (usersResponse['data']['users'] as List)
               .map((json) => User.fromJson(json))
-              .where((user) => user.teamId == _teamId)
+              .where((user) =>
+                  user.teamId == _teamId && user.id != currentUser?.id)
               .toList();
         }
 
@@ -96,36 +102,65 @@ class _LeadDashboardState extends State<LeadDashboard>
   int get _lateCount => _teamAttendance.where((a) => a.status == 'LATE').length;
   int get _absentCount => _teamMembers.length - _teamAttendance.length;
 
+  void _navigateToProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        title: const Text('Team Lead'),
+        title: const Text('AKH Dashboard'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        automaticallyImplyLeading: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+            onPressed: _navigateToProfile,
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(icon: Icon(Icons.people), text: 'Team'),
             Tab(icon: Icon(Icons.access_time), text: 'My Attendance'),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () => authProvider.logout(),
-          ),
-        ],
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildTeamView(),
-          const EmployeeHomeScreen(),
+          // Background - Consistent with Employee Home
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF2E003E),
+                  Colors.black,
+                  Colors.black,
+                ],
+              ),
+            ),
+          ),
+
+          // Tab Content
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildTeamView(),
+              const EmployeeHomeScreen(isEmbedded: true),
+            ],
+          ),
         ],
       ),
     );
@@ -200,7 +235,8 @@ class _LeadDashboardState extends State<LeadDashboard>
                 final isPresent = attendance.id.isNotEmpty;
                 final isLate = attendance.status == 'LATE';
                 final checkInTime = isPresent
-                    ? DateFormat('h:mm a').format(attendance.checkInTime)
+                    ? DateFormat('h:mm a')
+                        .format(attendance.checkInTime.toLocal())
                     : null;
 
                 return Padding(
@@ -210,6 +246,14 @@ class _LeadDashboardState extends State<LeadDashboard>
                     isPresent: isPresent,
                     isLate: isLate,
                     checkInTime: checkInTime,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AdminUserDetailsScreen(user: member),
+                        ),
+                      );
+                    },
                   ),
                 );
               }),
