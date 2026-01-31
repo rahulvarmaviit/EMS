@@ -5,6 +5,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { logger } from '../utils/logger';
 import { Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 /**
  * GET /api/users
@@ -326,4 +327,101 @@ export async function deleteUser(req: Request, res: Response): Promise<void> {
   }
 }
 
-export default { listUsers, getUser, assignTeam, deleteUser };
+/**
+ * PATCH /api/users/:id/reset-credentials
+ * Reset user password or mobile number (Admin only)
+ */
+export async function resetCredentials(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { mobile_number, password } = req.body;
+
+    if (!mobile_number && !password) {
+      res.status(400).json({
+        success: false,
+        error: 'Either mobile_number or password must be provided',
+      });
+      return;
+    }
+
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+      return;
+    }
+
+    const updateData: any = {};
+
+    // Handle Mobile Number Update
+    if (mobile_number) {
+      // Check for uniqueness
+      const existingUser = await prisma.user.findUnique({
+        where: { mobile_number },
+      });
+
+      if (existingUser && existingUser.id !== id) {
+        res.status(409).json({
+          success: false,
+          error: 'Mobile number already in use by another user',
+        });
+        return;
+      }
+
+      updateData.mobile_number = mobile_number;
+    }
+
+    // Handle Password Update
+    if (password) {
+      if (password.length < 6) {
+        res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters',
+        });
+        return;
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      updateData.password_hash = await bcrypt.hash(password, salt);
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+    });
+
+    logger.info('User credentials reset', {
+      userId: id,
+      resetBy: req.user?.userId,
+      updatedFields: Object.keys(updateData),
+    });
+
+    res.json({
+      success: true,
+      message: 'User credentials updated successfully',
+      data: {
+        user: {
+          id: updatedUser.id,
+          mobile_number: updatedUser.mobile_number,
+          full_name: updatedUser.full_name,
+          role: updatedUser.role,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Reset credentials error', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update credentials',
+    });
+  }
+}
+
+export default { listUsers, getUser, assignTeam, deleteUser, resetCredentials };

@@ -22,4 +22,8 @@ router.patch('/:id/assign-team', authorize('ADMIN'), assignTeam);
 // Admin only - delete user
 router.delete('/:id', authorize('ADMIN'), deleteUser);
 
+// Admin only - reset credentials
+import { resetCredentials } from '../controllers/userController';
+router.patch('/:id/reset-credentials', authorize('ADMIN'), resetCredentials);
+
 export default router;
